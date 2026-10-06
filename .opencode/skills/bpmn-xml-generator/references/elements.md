@@ -26,7 +26,7 @@ xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
 ```
 
 `dc`, `di`, and `bpmndi` are needed by the `<bpmndi:BPMNDiagram>` section, which every file must
-carry. Do not add a vendor namespace.
+carry.
 
 Child order: all root elements (`message`, `signal`, `error`, `process`) first, then
 `<bpmndi:BPMNDiagram>`.

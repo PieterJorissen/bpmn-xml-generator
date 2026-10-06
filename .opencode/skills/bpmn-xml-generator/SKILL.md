@@ -15,10 +15,11 @@ compatibility: opencode
 Produces plain BPMN 2.0 XML: schema-valid against the OMG BPMN 2.0 XSD, parseable by
 `bpmn-moddle`, and importable into bpmn-js with no warnings.
 
-**No vendor extensions.** No `camunda:` namespace, no engine-specific attributes. Everything is
-standard BPMN 2.0, so the file opens in bpmn.io and any conforming tool. Engine-specific wiring
-(DMN decision refs, connector configuration, variable mapping) is added by the user afterwards,
-in whatever their engine expects.
+**Plain BPMN 2.0, no vendor extensions.** This is a portability choice, not a compatibility one:
+a `camunda:` namespace is valid under the BPMN schema and bpmn.io imports it without complaint.
+Staying vendor-neutral means the output works unchanged in any conforming tool, and engine-specific
+wiring (decision refs, connector configuration, variable mapping) stays in the engine, where the
+user configures it. If a user asks for their engine's extensions, add them — nothing breaks.
 
 Shell commands in this skill are **PowerShell**.
 
@@ -128,7 +129,7 @@ existing value when editing a file. Declare `<message>`, `<signal>`, and `<error
 
 ### userTask with a group or a named assignee
 `potentialOwner` offers the task to a group; `humanPerformer` assigns it to one person. Both are
-standard BPMN and replace the vendor `assignee` / `candidateGroups` attributes.
+standard BPMN, and are the portable equivalent of the vendor `assignee` / `candidateGroups`.
 
 ```xml
 <userTask id="review_task" name="Review Request">
@@ -307,7 +308,6 @@ Structure:
 
 Cleanliness in bpmn.io:
 
-- No `camunda:` or other vendor namespace, and no vendor attributes.
 - A `<bpmndi:BPMNDiagram>` section is present (§7).
 - Every `<ioSpecification>`, if used at all, has both `<inputSet>` and `<outputSet>` — the schema
   requires them. See `references/elements.md`.

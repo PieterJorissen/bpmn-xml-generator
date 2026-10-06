@@ -34,9 +34,10 @@ ignored.
 ## Architecture and design constraints
 
 ### Output constraints
-- **Plain BPMN 2.0 only — no vendor namespace.** No `camunda:` prefix, no engine-specific
-  attributes. Assignment uses standard `<potentialOwner>` / `<humanPerformer>`; decision refs,
-  connector config and variable mapping are left for the user to add in their engine's own terms
+- **Plain BPMN 2.0 by default — a portability choice, not a compatibility one.** A `camunda:`
+  namespace is schema-valid and imports into bpmn.io cleanly; vendor-neutral output is preferred so
+  files work in any conforming tool. Assignment uses standard `<potentialOwner>` /
+  `<humanPerformer>`; decision refs, connector config and variable mapping are left to the engine
 - Output must be schema-valid against the OMG BPMN 2.0 XSD and import into bpmn-js with no warnings
 - **A `<bpmndi:BPMNDiagram>` section is mandatory** — without it bpmn.io reports "no diagram to
   display" and renders nothing. It is generated with `bpmn-auto-layout`, never by hand

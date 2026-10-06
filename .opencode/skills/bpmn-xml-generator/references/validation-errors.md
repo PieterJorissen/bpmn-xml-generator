@@ -59,10 +59,6 @@ fixes. Every entry below was reproduced against the OMG BPMN 2.0 XSD or bpmn-js.
 **Cause:** A flow node has no `BPMNShape`, or a sequence flow no `BPMNEdge`, in the `BPMNPlane`.  
 **Fix:** Re-run the layout step on the finished file rather than hand-editing the diagram section. An embedded `subProcess` is an expected case: its children are deliberately laid out off-plane and do not appear.
 
-### ERR-022: Vendor attributes dropped or flagged
-**Cause:** The file uses a vendor namespace (such as `camunda:`) that the plain bpmn.io viewer does not understand.  
-**Fix:** Emit plain BPMN 2.0. Use `<potentialOwner>`/`<humanPerformer>` for assignment, and leave engine-specific wiring to be added outside the generated file.
-
 ---
 
 ## Engine-time errors
