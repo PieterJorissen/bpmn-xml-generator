@@ -5,18 +5,6 @@ Parsed by `bpmn-moddle` against the OMG BPMN 2.0 schema.
 
 ---
 
-## Table of Contents
-1. [Root Elements](#1-root-elements)
-2. [Events](#2-events)
-3. [Activities](#3-activities)
-4. [Gateways](#4-gateways)
-5. [Sequence Flows](#5-sequence-flows)
-6. [Data & IO](#6-data--io)
-7. [Event Definitions](#7-event-definitions)
-8. [Extension Elements (Camunda-compatible)](#8-extension-elements-camunda-compatible)
-
----
-
 ## 1. Root Elements
 
 ### `<definitions>`
@@ -82,8 +70,7 @@ Supported definitions: Timer, Message, Signal, Conditional.
 Must have exactly one `<incoming>` and one `<outgoing>`.
 
 ### `<intermediateThrowEvent>`
-Supported definitions: Message, Signal, Escalation.  
-Common use cases include sending notifications to interested parties, triggering downstream messages, or signaling other processes. For example, a Message throw event can notify a user that an automated step completed before the next human task begins.
+Supported definitions: Message, Signal, Escalation.
 
 ### `<boundaryEvent>`
 | Attribute | Required | Notes |
