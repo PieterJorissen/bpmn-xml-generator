@@ -32,7 +32,7 @@ process. It:
 Run from the root of your project:
 
 ```powershell
-irm https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/PieterJorissen/bpmn-xml-generator/main/install.ps1 | iex
 ```
 
 Installs to `.opencode/skills/bpmn-xml-generator/`.
@@ -40,14 +40,14 @@ Installs to `.opencode/skills/bpmn-xml-generator/`.
 Global install, available in every project:
 
 ```powershell
-$s = irm https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.ps1
+$s = irm https://raw.githubusercontent.com/PieterJorissen/bpmn-xml-generator/main/install.ps1
 & ([scriptblock]::Create($s)) -Global
 ```
 
 Manual install:
 
 ```powershell
-git clone https://github.com/samueldc/bpmn-xml-generator.git
+git clone https://github.com/PieterJorissen/bpmn-xml-generator.git
 Copy-Item -Recurse bpmn-xml-generator/.opencode/skills/bpmn-xml-generator .opencode/skills/
 ```
 

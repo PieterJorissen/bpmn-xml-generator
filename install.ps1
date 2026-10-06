@@ -7,7 +7,7 @@
   directory, or into the opencode global config directory with -Global.
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/PieterJorissen/bpmn-xml-generator/main/install.ps1 | iex
 
 .EXAMPLE
   ./install.ps1 -Global
@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $Skill   = 'bpmn-xml-generator'
-$BaseUrl = "https://raw.githubusercontent.com/samueldc/$Skill/$Branch/.opencode/skills/$Skill"
+$BaseUrl = "https://raw.githubusercontent.com/PieterJorissen/$Skill/$Branch/.opencode/skills/$Skill"
 
 if ($Global) {
     $ConfigRoot = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $HOME '.config' }
