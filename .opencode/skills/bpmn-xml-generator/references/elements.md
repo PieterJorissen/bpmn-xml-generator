@@ -1,7 +1,7 @@
 # BPMN Element Reference
 
-Full attribute reference for commonly supported BPMN 2.0 elements.
-Parsed by `bpmn-moddle` against the OMG BPMN 2.0 schema.
+Attribute reference for the supported BPMN 2.0 elements. Everything here is plain BPMN 2.0 — no
+vendor namespace. Validated against the OMG BPMN 2.0 XSD.
 
 ---
 
@@ -16,15 +16,20 @@ Parsed by `bpmn-moddle` against the OMG BPMN 2.0 schema.
 | `exporter` | — | Tool name |
 | `exporterVersion` | — | Tool version |
 
-Required namespaces on `<definitions>`:
+Namespaces on `<definitions>`:
 ```
 xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
 xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
 xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
 ```
+
+`dc`, `di`, and `bpmndi` are needed by the `<bpmndi:BPMNDiagram>` section, which every file must
+carry.
+
+Child order: all root elements (`message`, `signal`, `error`, `process`) first, then
+`<bpmndi:BPMNDiagram>`.
 
 ### `<process>`
 | Attribute | Required | Notes |
@@ -34,9 +39,29 @@ xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
 | `isExecutable` | ✅ | Must be `true` |
 | `processType` | — | `None` (default), `Public`, `Private` |
 
+Child order: `property*`, then flow elements (events, activities, gateways, sequence flows), then
+artifacts. A `<property>` placed after the flow elements is a schema error.
+
 ---
 
-## 2. Events
+## 2. Child element order
+
+The schema defines children as an ordered sequence. Correct elements in the wrong order fail
+validation.
+
+Inside an **activity** (any task, `callActivity`, `subProcess`):
+```
+incoming, outgoing, ioSpecification?, property*, dataInputAssociation*,
+dataOutputAssociation*, potentialOwner / humanPerformer*, loopCharacteristics?
+```
+
+Inside an **event**: `incoming`, `outgoing`, then the event definition last.
+
+`incoming` and `outgoing` always come first.
+
+---
+
+## 3. Events
 
 ### `<startEvent>`
 | Attribute | Notes |
@@ -61,13 +86,8 @@ xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
 **Message end**: `<messageEventDefinition messageRef="..."/>` — sends message on completion.
 
 ### `<intermediateCatchEvent>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-
 Supported definitions: Timer, Message, Signal, Conditional.  
-Must have exactly one `<incoming>` and one `<outgoing>`.
+Must have exactly one `<incoming>` and one `<outgoing>`, both before the event definition.
 
 ### `<intermediateThrowEvent>`
 Supported definitions: Message, Signal, Escalation.
@@ -85,7 +105,7 @@ Must have `<outgoing>` but **no** `<incoming>`.
 
 ---
 
-## 3. Activities
+## 4. Activities
 
 ### `<task>`
 Generic task — passes through immediately with no side effects.
@@ -101,43 +121,55 @@ Generic task — passes through immediately with no side effects.
 |---|---|
 | `id` | required |
 | `name` | displayed as task name in UI |
-| `camunda:assignee` | specific user id or `{{variables.manager}}` |
-| `camunda:candidateGroups` | comma-separated group names or `{{variables.team}}` |
-| `camunda:dueDate` | ISO 8601 datetime or `{{variables.dueDate}}` |
-| `camunda:formKey` | optional form key reference |
 
-The `camunda:` prefix attributes require `xmlns:camunda="http://camunda.org/schema/1.0/bpmn"` on `<definitions>`.
+Assignment uses the standard resource roles, placed **after** `<incoming>`/`<outgoing>`:
 
-For frontend data visibility, add `<ioSpecification>` with `<dataInput>` and `<dataOutput>` children. See section 6.
+- `<potentialOwner>` — the task is offered to a group of candidates.
+- `<humanPerformer>` — the task is assigned to one performer.
+
+```xml
+<userTask id="review_task" name="Review Request">
+  <incoming>f1</incoming>
+  <outgoing>f2</outgoing>
+  <humanPerformer>
+    <resourceAssignmentExpression>
+      <formalExpression>{{variables.manager}}</formalExpression>
+    </resourceAssignmentExpression>
+  </humanPerformer>
+</userTask>
+```
+
+A due date and a form reference have no standard BPMN attribute. Leave them out; they are engine
+configuration.
 
 ### `<serviceTask>`
 | Attribute | Notes |
 |---|---|
 | `id` | required |
 | `name` | label |
-| `implementation` | `"webService"` for webhook/http dispatch |
+| `implementation` | optional; `##WebService` (default) or `##unspecified` |
 
-The engine dispatches a webhook to the configured URL when this task is reached. The task completes automatically after dispatch (fire-and-forget) unless a correlating `receiveTask` follows.
+How the engine dispatches the task is engine configuration, not BPMN. Emit a plain `serviceTask`.
 
 ### `<scriptTask>`
 | Attribute | Notes |
 |---|---|
 | `id` | required |
 | `name` | label |
-| `scriptFormat` | `"javascript"` — a restricted subset; no `eval`, `require`, DOM, or network access |
+| `scriptFormat` | e.g. `"javascript"` |
 
 ```xml
 <scriptTask id="compute_score" name="Compute Score" scriptFormat="javascript">
-  <script>variables.score = variables.income / variables.debt * 10;</script>
   <incoming>f1</incoming>
   <outgoing>f2</outgoing>
+  <script>variables.score = variables.income / variables.debt * 10;</script>
 </scriptTask>
 ```
 
-⚠️ Scripts have no access to `eval`, `require`, DOM, or network. Only `variables`, `instance`, `now()`.
+Engines typically restrict the script sandbox; what is reachable from a script is engine-specific.
 
 ### `<sendTask>`
-Dispatches a message or webhook and continues immediately.
+Dispatches a message and continues immediately.
 
 ### `<receiveTask>`
 Waits for a correlated message before continuing.
@@ -150,14 +182,10 @@ Waits for a correlated message before continuing.
 ```
 
 ### `<businessRuleTask>`
-Evaluates a DMN decision table. The `camunda:decisionRef` attribute must contain the `id` of a DMN definition that has been previously registered in the engine. The referenced DMN definition must exist before the process instance reaches this task.
+Marks a step that evaluates a decision. The reference to the decision itself (a DMN definition) has
+no standard BPMN attribute — it is engine-specific and is left out.
 ```xml
-<businessRuleTask id="run_credit_rules" name="Credit Score Check"
-                  camunda:decisionRef="my-decision-id">
-  <extensionElements>
-    <camunda:in  variables="all"/>
-    <camunda:out variables="all"/>
-  </extensionElements>
+<businessRuleTask id="run_credit_rules" name="Credit Score Check">
   <incoming>f1</incoming>
   <outgoing>f2</outgoing>
 </businessRuleTask>
@@ -171,59 +199,59 @@ Invokes another process definition as a sub-process.
 
 ```xml
 <callActivity id="run_kyc" name="Run KYC Process" calledElement="kyc-check">
-  <extensionElements>
-    <camunda:in  variables="all"/>
-    <camunda:out variables="all"/>
-  </extensionElements>
   <incoming>f1</incoming>
   <outgoing>f2</outgoing>
 </callActivity>
 ```
 
+Variable passing between caller and callee is engine-specific. Prefer `callActivity` over an
+embedded `subProcess` when the sub-flow should be visible as its own diagram.
+
 ### `<subProcess>`
-Embedded sub-process. Contains its own start/end events and activities.
+Embedded sub-process with its own start/end events.
 ```xml
 <subProcess id="sub_validation" name="Validation">
   <incoming>f1</incoming>
   <outgoing>f2</outgoing>
   <startEvent id="sub_start"><outgoing>sub_f1</outgoing></startEvent>
-  <!-- ... sub-process elements ... -->
-  <endEvent id="sub_end"/>
-  <sequenceFlow id="sub_f1" sourceRef="sub_start" targetRef="..."/>
+  <endEvent id="sub_end"><incoming>sub_f1</incoming></endEvent>
+  <sequenceFlow id="sub_f1" sourceRef="sub_start" targetRef="sub_end"/>
 </subProcess>
 ```
 
+`bpmn-auto-layout` renders an embedded sub-process collapsed, with its children laid out in a
+separate coordinate space, so they do not appear on the canvas.
+
 ---
 
-## 4. Gateways
+## 5. Gateways
 
 ### `<exclusiveGateway>` (XOR)
-Exactly one outgoing flow is taken based on conditions. The flow whose condition evaluates to `true` first (in document order) wins.
+Exactly one outgoing flow is taken. The flow whose condition evaluates to `true` first (in
+document order) wins.
 
-**Default flow**: set `default="flow_id"` on the gateway, and omit `<conditionExpression>` on that flow. It is taken when no other condition matches.
+**Default flow**: set `default="flow_id"` on the gateway, and omit `<conditionExpression>` on that
+flow. It is taken when no other condition matches.
 
 ```xml
 <exclusiveGateway id="gw_check" name="Check Result" default="flow_default">
   <incoming>f_in</incoming>
   <outgoing>flow_high</outgoing>
-  <outgoing>flow_low</outgoing>
   <outgoing>flow_default</outgoing>
 </exclusiveGateway>
 ```
 
 ### `<parallelGateway>` (AND)
 **Split**: all outgoing flows are activated simultaneously.  
-**Join**: waits for ALL incoming tokens before continuing. The same element ID is reused for both split and join — or separate elements can be used.
+**Join**: waits for ALL incoming tokens before continuing.
 
 ```xml
-<!-- split -->
 <parallelGateway id="gw_split">
   <incoming>f_in</incoming>
   <outgoing>f_branch_a</outgoing>
   <outgoing>f_branch_b</outgoing>
 </parallelGateway>
 
-<!-- join -->
 <parallelGateway id="gw_join">
   <incoming>f_branch_a_done</incoming>
   <incoming>f_branch_b_done</incoming>
@@ -232,28 +260,26 @@ Exactly one outgoing flow is taken based on conditions. The flow whose condition
 ```
 
 ### `<inclusiveGateway>` (OR)
-One or more outgoing flows taken. Every flow whose condition is `true` is activated. Same join semantics: waits for all activated tokens.
+Every flow whose condition is `true` is activated. The join waits for all activated tokens.
 
 ### `<eventBasedGateway>`
-Race between events. The first event to arrive wins; others are cancelled.
+Race between events; the first to arrive wins. Must be followed by `intermediateCatchEvent`s only.
 ```xml
 <eventBasedGateway id="gw_race">
   <incoming>f_in</incoming>
   <outgoing>f_to_msg_catch</outgoing>
   <outgoing>f_to_timer_catch</outgoing>
 </eventBasedGateway>
-<!-- Must be followed by intermediateCatchEvents only -->
 ```
 
 ---
 
-## 5. Sequence Flows
+## 6. Sequence Flows
 
 ```xml
 <sequenceFlow id="flow_id" name="optional label"
               sourceRef="source_element_id"
               targetRef="target_element_id">
-  <!-- Optional condition (only on flows leaving exclusiveGateway or inclusiveGateway) -->
   <conditionExpression xsi:type="tFormalExpression">
     {{variables.approved == true}}
   </conditionExpression>
@@ -262,43 +288,48 @@ Race between events. The first event to arrive wins; others are cancelled.
 
 Rules:
 - Every flow needs a unique `id`.
-- `name` is optional but improves diagram readability.
 - Conditions are only valid on flows leaving an `exclusiveGateway` or `inclusiveGateway`.
 - A flow leaving a `parallelGateway` must NOT have a condition.
+- `conditionExpression` content is opaque text to bpmn.io; its syntax is engine-specific.
 
 ---
 
-## 6. Data & IO
+## 7. Data & IO
 
-### `<ioSpecification>` on `userTask`
-Controls which variables are exposed by the engine to external consumers (e.g. a task UI).
-```xml
-<ioSpecification>
-  <dataInput  id="in_amount"       name="amount"/>
-  <dataInput  id="in_justification" name="justification"/>
-  <dataOutput id="out_approved"    name="approved"/>
-  <dataOutput id="out_comment"     name="comment"/>
-</ioSpecification>
-```
-- `dataInput` names must match process variable names exactly.
-- `dataOutput` names define what variables the user sets when completing the task.
-- If no `ioSpecification` is declared, the engine exposes **no variables** to the task UI (secure default).
+`ioSpecification` is optional and most engines do not require it. If used, it must be
+schema-complete, which means **both** `<inputSet>` and `<outputSet>` are mandatory — the common
+mistake of listing only `dataInput`/`dataOutput` is a validation error.
 
-### `<dataInputAssociation>` on `intermediateThrowEvent`
-Controls which variables are included in the event payload when the throw event fires.
 ```xml
-<intermediateThrowEvent id="notify_done" name="Analysis Complete">
-  <dataInputAssociation>
-    <sourceRef>creditScore</sourceRef>
-    <sourceRef>approvedLimit</sourceRef>
-  </dataInputAssociation>
-  <messageEventDefinition messageRef="msg_analysis"/>
-</intermediateThrowEvent>
+<process id="io-demo" name="IO Demo" isExecutable="true">
+  <property id="prop_amount" name="amount"/>
+
+  <userTask id="review" name="Review">
+    <incoming>f1</incoming>
+    <outgoing>f2</outgoing>
+    <ioSpecification>
+      <dataInput id="in_amount" name="amount"/>
+      <dataOutput id="out_approved" name="approved"/>
+      <inputSet><dataInputRefs>in_amount</dataInputRefs></inputSet>
+      <outputSet><dataOutputRefs>out_approved</dataOutputRefs></outputSet>
+    </ioSpecification>
+    <dataInputAssociation id="dia_1">
+      <sourceRef>prop_amount</sourceRef>
+      <targetRef>in_amount</targetRef>
+    </dataInputAssociation>
+  </userTask>
+  ...
+</process>
 ```
+
+- A `<dataInputAssociation>` requires exactly one `<targetRef>`.
+- `<sourceRef>` and `<targetRef>` are ID references. They must name a declared element — a
+  `<property>`, `<dataObject>`, `<dataInput>` or `<dataOutput>` — never a bare variable name.
+- A process-level `<property>` must appear before the flow elements.
 
 ---
 
-## 7. Event Definitions
+## 8. Event Definitions
 
 ### `<timerEventDefinition>`
 ```xml
@@ -321,7 +352,7 @@ Controls which variables are included in the event payload when the throw event 
 ### `<messageEventDefinition>`
 ```xml
 <messageEventDefinition messageRef="msg_payment"/>
-<!-- Declare message at top level -->
+<!-- Declare the message as a sibling of <process> -->
 <message id="msg_payment" name="payment_received"/>
 ```
 
@@ -344,35 +375,25 @@ Controls which variables are included in the event payload when the throw event 
 
 ---
 
-## 8. Extension Elements (Camunda-compatible)
+## 9. Diagram Interchange
 
-These extensions use the Camunda namespace, supported by Camunda-compatible process engines.  
-Add `xmlns:camunda="http://camunda.org/schema/1.0/bpmn"` to `<definitions>`.
+Every file needs a `<bpmndi:BPMNDiagram>` as the last child of `<definitions>`, or bpmn.io reports
+*"no diagram to display"*. Generate it with `bpmn-auto-layout` rather than by hand — see
+`../SKILL.md` §7.
 
-| Extension | Element | Purpose |
-|---|---|---|
-| `camunda:assignee` | `userTask` | Fixed or dynamic assignee |
-| `camunda:candidateGroups` | `userTask` | Comma-separated group names |
-| `camunda:dueDate` | `userTask` | ISO datetime or expression |
-| `camunda:formKey` | `userTask` | Form identifier |
-| `camunda:in variables="all"` | `callActivity`, `businessRuleTask` | Pass all variables in |
-| `camunda:out variables="all"` | `callActivity`, `businessRuleTask` | Receive all variables out |
-| `camunda:connector/camunda:connectorId` | `serviceTask` | Connector type (`webhook`, `http`) |
-| `camunda:decisionRef` | `businessRuleTask` | `id` of a previously registered DMN definition |
-
-Example for `userTask` with all extension attributes:
 ```xml
-<userTask id="approve_task" name="Approve"
-          camunda:assignee="{{variables.manager}}"
-          camunda:candidateGroups="finance,approvers"
-          camunda:dueDate="{{variables.dueDate}}">
-  <extensionElements>
-    <camunda:formData>
-      <camunda:formField id="approved" label="Approved?"   type="boolean"/>
-      <camunda:formField id="reason"   label="Reason"      type="string"/>
-      <camunda:formField id="amount"   label="Adj. Amount" type="long"/>
-    </camunda:formData>
-  </extensionElements>
-  ...
-</userTask>
+<bpmndi:BPMNDiagram id="BPMNDiagram_1">
+  <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="{process-key}">
+    <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+      <dc:Bounds x="152" y="82" width="36" height="36" />
+    </bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="flow_1_di" bpmnElement="flow_1">
+      <di:waypoint x="188" y="100" />
+      <di:waypoint x="240" y="100" />
+    </bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane>
+</bpmndi:BPMNDiagram>
 ```
+
+Every flow node needs a `BPMNShape` and every sequence flow a `BPMNEdge`, each pointing at its
+element's `id` via `bpmnElement`.

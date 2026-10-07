@@ -33,13 +33,21 @@ ignored.
 
 ## Architecture and design constraints
 
-### Engine-compatibility constraints
-- Parser: **`bpmn-moddle`** (bpmn-io) against the OMG BPMN 2.0 schema
-- Expression syntax: `{{variables.fieldName}}` — never FEEL (`#{}`) or UEL (`${}`)
+### Output constraints
+- **Plain BPMN 2.0 by default — a portability choice, not a compatibility one.** A `camunda:`
+  namespace is schema-valid and imports into bpmn.io cleanly; vendor-neutral output is preferred so
+  files work in any conforming tool. Assignment uses standard `<potentialOwner>` /
+  `<humanPerformer>`; decision refs, connector config and variable mapping are left to the engine
+- Output must be schema-valid against the OMG BPMN 2.0 XSD and import into bpmn-js with no warnings
+- **A `<bpmndi:BPMNDiagram>` section is mandatory** — without it bpmn.io reports "no diagram to
+  display" and renders nothing. It is generated with `bpmn-auto-layout`, never by hand
+- Child elements follow schema order: `incoming`/`outgoing` first, event definitions last,
+  process-level `<property>` before the flow elements
+- An `<ioSpecification>`, if present, needs both `<inputSet>` and `<outputSet>`; a
+  `<dataInputAssociation>` needs a `<targetRef>`, and refs name element ids, not variable names
+- Expression syntax: `{{variables.fieldName}}` — a convention, not BPMN; bpmn.io treats conditions
+  as opaque text and each engine differs
 - Timer values: ISO 8601 only — `{{...}}` is not valid inside a timer expression
-- Camunda namespace (`xmlns:camunda="http://camunda.org/schema/1.0/bpmn"`) required for `userTask`
-  attributes (`assignee`, `candidateGroups`, `dueDate`, `formKey`) and for `callActivity` /
-  `businessRuleTask` variable passing
 - `<process isExecutable="true">` is mandatory
 - `targetNamespace` on `<definitions>` is mandatory (any valid URI; the engine does not read it —
   `http://bpmn.io/schema/bpmn` is the conventional default for new files)
@@ -62,8 +70,10 @@ type, and any gateway conditions. All missing items are asked in a single respon
 - `SKILL.md` is the source of truth for skill behaviour. All rules, patterns, and constraints live
   there. Keep it lean — content that does not change the output does not belong in it.
 - `elements.md` is reference-only — update it when supported engine extensions change.
-- `examples.md` examples must remain valid BPMN that can be uploaded to an engine. Do not add an
-  example that would fail `bpmn-moddle` parsing.
+- `examples.md` examples must stay schema-valid and importable into bpmn-js with no warnings, and
+  each must carry its own `<bpmndi:BPMNDiagram>`. Verify any change by extracting the XML from the
+  Markdown and running it through both `xmllint --schema` (OMG BPMN20.xsd) and a bpmn-js import —
+  validate what is in the file, not what you intended to write.
 - `validation-errors.md` — add entries as new error patterns are found; keep codes sequential.
 - XML escaping in examples: `&&` → `&amp;&amp;`, `<` → `&lt;` in element content and attribute
   values.

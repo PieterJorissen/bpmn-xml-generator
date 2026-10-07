@@ -1,90 +1,101 @@
 # BPMN Validation Errors
 
-Common `bpmn-moddle` parse errors, their root causes, and how to fix them.
+Errors from XSD validation, `bpmn-moddle` parsing, bpmn.io import, and process engines — with
+fixes. Every entry below was reproduced against the OMG BPMN 2.0 XSD or bpmn-js.
 
 ---
 
-## Parse-time errors (bpmn-moddle rejects the file)
+## Schema errors (XSD validation fails)
 
 ### ERR-001: `missing attribute 'id'`
 **Cause:** An element is missing its `id` attribute.  
 **Fix:** Add a unique `id` to every element — events, tasks, gateways, flows, and definitions.
 
 ### ERR-002: `unknown element <xyz>`
-**Cause:** An element type not in the BPMN 2.0 schema or a typo.  
+**Cause:** An element type not in the BPMN 2.0 schema, or a typo.  
 **Fix:** Check spelling. Common typos: `<exclusiveGateway>` (not `<exclusivegateway>`), `<sequenceFlow>` (not `<SequenceFlow>`). BPMN is case-sensitive.
 
 ### ERR-003: `unresolved reference 'xyz'`
 **Cause:** A `sourceRef`, `targetRef`, `attachedToRef`, `messageRef`, or `signalRef` points to an ID that does not exist.  
-**Fix:** Verify every reference resolves to a declared element ID. Message and Signal elements must be declared as siblings of `<process>` inside `<definitions>`, not inside `<process>`.
+**Fix:** Verify every reference resolves to a declared element ID. Message, signal and error elements must be declared as siblings of `<process>` inside `<definitions>`, not inside `<process>`.
 
 ### ERR-004: `targetNamespace is required`
 **Cause:** Missing `targetNamespace` attribute on `<definitions>`.  
-**Fix:** Add any valid URI, e.g. `targetNamespace="http://bpmn.io/schema/bpmn"`. The value is not read by the engine — it is required by the BPMN 2.0 XML schema only. When editing an existing file, preserve the namespace already declared — changing it is unnecessary and may break external references in BPMN collaboration diagrams.
+**Fix:** Add any valid URI, e.g. `targetNamespace="http://bpmn.io/schema/bpmn"`. The value is not read by the engine. When editing an existing file, preserve the namespace already declared.
 
 ### ERR-005: XML is not well-formed
 **Cause:** Unclosed tags, wrong nesting, or illegal characters.  
 **Fix:**
 - Every opened tag must be closed: `<task ...>...</task>` or `<task .../>`.
 - `<incoming>` and `<outgoing>` are child elements of activities/events, not attributes.
-- In expressions inside XML content, escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`.
+- In element content, escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`.
 - In attribute values, escape `"` as `&quot;`.
+
+### ERR-006: `Element 'incoming': This element is not expected`
+**Cause:** Child elements are out of schema order. The schema defines them as an ordered sequence, so individually valid elements still fail if they appear in the wrong place. Usually `<incoming>`/`<outgoing>` were written after `<ioSpecification>` or after an event definition.  
+**Fix:** Put `<incoming>` and `<outgoing>` first. Inside an activity the order is `incoming, outgoing, ioSpecification?, property*, dataInputAssociation*, dataOutputAssociation*, potentialOwner / humanPerformer*, loopCharacteristics?`. Inside an event, the event definition comes last.
+
+### ERR-007: `Element 'ioSpecification': Missing child element(s)`
+**Cause:** An `<ioSpecification>` lists only `<dataInput>`/`<dataOutput>`. The schema requires at least one `<inputSet>` and one `<outputSet>`.  
+**Fix:** Add both sets, referencing the declared inputs and outputs — or drop the `ioSpecification` entirely, since it is optional. See `elements.md` §7.
+
+### ERR-008: `Element 'dataInputAssociation': Missing child element(s)`
+**Cause:** A `<dataInputAssociation>` has no `<targetRef>`, which is mandatory.  
+**Fix:** Add exactly one `<targetRef>` naming a declared `<dataInput>`. Each `<sourceRef>` must also name a declared element id (a `<property>` or `<dataObject>`), never a bare variable name.
+
+### ERR-009: `Element 'property': This element is not expected`
+**Cause:** A process-level `<property>` appears after the flow elements.  
+**Fix:** Move it above the first event/activity. In `<process>` the order is `property*`, then flow elements, then artifacts.
+
+---
+
+## bpmn.io import errors
+
+### ERR-020: `no diagram to display`
+**Cause:** The file has no `<bpmndi:BPMNDiagram>` section. The semantic model is fine, but there is nothing to render, so bpmn.io shows an empty canvas.  
+**Fix:** Generate the diagram section with `bpmn-auto-layout` — see `../SKILL.md` §7. This is the most common reason a valid file "does not work" in bpmn.io.
+
+### ERR-021: Elements missing from the canvas
+**Cause:** A flow node has no `BPMNShape`, or a sequence flow no `BPMNEdge`, in the `BPMNPlane`.  
+**Fix:** Re-run the layout step on the finished file rather than hand-editing the diagram section. An embedded `subProcess` is an expected case: its children are deliberately laid out off-plane and do not appear.
 
 ---
 
 ## Engine-time errors
 
-### ERR-010: `process has no startEvent`
+### ERR-030: `process has no startEvent`
 **Cause:** No `<startEvent>` exists in the process.  
 **Fix:** Add exactly one `<startEvent>` per process (sub-processes have their own).
 
-### ERR-011: `token stuck — no outgoing flow`
-**Cause:** A token reached an element with no matching outgoing flow (all conditions false on exclusiveGateway with no default).  
-**Fix:** Add a `default` attribute to the gateway pointing to a fallback flow. Ensure at least one condition will always be true.
+### ERR-031: `token stuck — no outgoing flow`
+**Cause:** A token reached an element with no matching outgoing flow (all conditions false on an exclusiveGateway with no default).  
+**Fix:** Add a `default` attribute to the gateway pointing to a fallback flow.
 
-### ERR-012: `parallelGateway join never fires`
-**Cause:** A parallel join gateway is waiting for tokens that will never arrive (e.g., one branch leads to an endEvent before reaching the join).  
-**Fix:** In a parallel split, ALL branches must converge at the join gateway. If one branch can end early, use a different pattern: an `eventBasedGateway` or `inclusiveGateway`.
+### ERR-032: `parallelGateway join never fires`
+**Cause:** A parallel join is waiting for tokens that will never arrive (e.g. one branch ends before reaching the join).  
+**Fix:** In a parallel split, ALL branches must converge at the join. If a branch can end early, use an `eventBasedGateway` or `inclusiveGateway` instead.
 
-### ERR-013: `condition expression evaluation error`
-**Cause:** Expression references a variable that doesn't exist, or has a syntax error.  
-**Fix:**
-- Wrap expressions in `{{...}}`.
-- Only reference `variables`, `instance`, and `now()` — no global JS objects.
-- Check for typos in variable names.
-- String comparisons need quotes: `{{variables.status == 'approved'}}`, not `{{variables.status == approved}}`.
+### ERR-033: `condition expression evaluation error`
+**Cause:** The expression references a missing variable, or its syntax does not match the engine's expression language.  
+**Fix:** Condition syntax is engine-specific — bpmn.io treats it as opaque text, so a file can render perfectly and still fail at runtime. Check the variable names and confirm the dialect with the target engine. String comparisons need quotes: `{{variables.status == 'approved'}}`.
 
-### ERR-014: `timerEvent expression not ISO 8601`
+### ERR-034: `timerEvent expression not ISO 8601`
 **Cause:** Timer value is not a valid ISO 8601 string.  
 **Fix:**
 - Duration: `PT1H` (1 hour), `P1D` (1 day), `P2DT3H` (2 days 3 hours).
 - Date: `2026-12-31T09:00:00Z` (must include time zone).
-- Cycle: `R3/PT1H` (repeat 3 times, every hour) or `0 9 * * 1-5` (cron).
+- Cycle: `R3/PT1H` (repeat 3 times, every hour).
 - Do NOT use `{{expression}}` inside timer values.
 
-### ERR-015: `boundaryEvent has no attachedToRef`
+### ERR-035: `boundaryEvent has no attachedToRef`
 **Cause:** A `<boundaryEvent>` is missing the `attachedToRef` attribute.  
-**Fix:** Set `attachedToRef` to the `id` of the task or sub-process the boundary event is attached to.
-
----
-
-## Data / IO warnings (non-fatal but incorrect behavior)
-
-### WARN-001: `userTask has no ioSpecification — no variables exposed to the task UI`
-**Cause:** A `<userTask>` has no `<ioSpecification>` element.  
-**Behavior:** The engine exposes **no variables** to the task UI for this task. This is the secure default.  
-**Fix if needed:** Add `<ioSpecification>` with `<dataInput>` and `<dataOutput>` elements for each variable the form needs.
-
-### WARN-002: `dataInput name does not match any process variable`
-**Cause:** A `<dataInput name="xyz">` references a variable name that is never set in the process.  
-**Behavior:** The frontend receives `undefined` for that field.  
-**Fix:** Ensure the variable name in `dataInput` matches exactly (case-sensitive) the variable name set by a previous task's `dataOutput` or an initial variable passed at instantiation.
+**Fix:** Set `attachedToRef` to the `id` of the task or sub-process it is attached to.
 
 ---
 
 ## XML escaping quick reference
 
-| Character | Use inside XML element content | Use inside XML attribute value |
+| Character | Inside element content | Inside attribute value |
 |---|---|---|
 | `&` | `&amp;` | `&amp;` |
 | `<` | `&lt;` | `&lt;` |
@@ -92,9 +103,7 @@ Common `bpmn-moddle` parse errors, their root causes, and how to fix them.
 | `"` | `"` | `&quot;` |
 | `'` | `'` | `&apos;` (if delimited by `'`) |
 
-**Expression example with escaping:**
 ```xml
-<!-- Inside element content — OK -->
 <conditionExpression xsi:type="tFormalExpression">
   {{variables.score &gt;= 700 &amp;&amp; variables.debt &lt; 5000}}
 </conditionExpression>
