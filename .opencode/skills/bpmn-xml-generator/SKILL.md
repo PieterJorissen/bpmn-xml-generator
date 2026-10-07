@@ -251,14 +251,18 @@ target engine.
 Inside XML, escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`. Timer values are ISO 8601 only —
 `{{...}}` never appears in a timer.
 
-## 7. Diagram layout is mandatory
+## 7. Finish the file: layout and validation
 
-**A BPMN file with no `<bpmndi:BPMNDiagram>` does not open in bpmn.io.** It reports *"no diagram
-to display"* and renders an empty canvas. Always run the layout step before handing the file over.
+**A BPMN file with no `<bpmndi:BPMNDiagram>` does not open in bpmn.io** — it reports *"no diagram
+to display"* and renders an empty canvas. The same step that adds the diagram also validates the
+result, so neither can be skipped. It is two commands. Run both, every time.
 
-Requires network access. Node.js is used, but does **not** have to be installed: if `node` is not
-on PATH, the runner fetches the official portable Windows build into its own temp directory. That
-needs no installer and no administrator rights. Set up the runner once:
+Node.js is used but does **not** have to be installed: if `node` is not on PATH, the runner fetches
+the official portable Windows build into its own temp directory — no installer, no administrator
+rights. Network access is required.
+
+**Step 1 — set up the runner.** This also writes `finish.mjs`, so there is nothing to author by
+hand. Safe to re-run; it reuses what is already there.
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -291,23 +295,12 @@ if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
         else         { npm install bpmn-auto-layout }
     } finally { Pop-Location }
 }
-
 if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
     throw "bpmn-auto-layout is not installed in $Runner. The layout step cannot run."
 }
-```
 
-The last check tests the result on disk rather than `$LASTEXITCODE`, and `$ErrorActionPreference`
-is `Stop` for the same reason: a native command that is missing, or that fails to launch, raises a
-*non-terminating* error and leaves the exit code untouched — so without these the block prints
-errors, runs to the end and still **exits 0**, which reads as success and leads to handing over a
-file with no diagram section.
-
-Create `finish.mjs` inside that runner directory — `%TEMP%\bpmn-layout-runner\finish.mjs` — with
-the `write` tool. It applies the layout **and validates the result**, so the check cannot be
-skipped separately:
-
-```js
+# Single-quoted here-string: literal, so the JS ${...} is not touched by PowerShell.
+$Finish = @'
 import { readFileSync, writeFileSync } from 'fs';
 import { layoutProcess } from 'bpmn-auto-layout';
 import { BpmnModdle } from 'bpmn-moddle';
@@ -331,6 +324,20 @@ if (!(rootElement.diagrams || []).length)
   errors.push('no BPMNDiagram: bpmn.io will show "no diagram to display"');
 if (!rootElement.targetNamespace) errors.push('definitions: targetNamespace is missing');
 
+const DUR  = /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?!$)(\d+H)?(\d+M)?(\d+(\.\d+)?S)?)?$/;
+const DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const timer = (el, def) => {
+  for (const [k, re, what] of [['timeDuration', DUR, 'an ISO 8601 duration like PT1H'],
+                               ['timeDate', DATE, 'an ISO 8601 timestamp with a time zone'],
+                               ['timeCycle', /^R\d*\/.+$/, 'an ISO 8601 repeating cycle like R3/PT24H']]) {
+    const v = def[k]?.body?.trim();
+    if (v === undefined) continue;
+    if (v.includes('{{')) errors.push(`${el.id}: timer ${k} is "${v}" - timers take ISO 8601 only, never an expression`);
+    else if (!re.test(v)) errors.push(`${el.id}: timer ${k} is "${v}" - expected ${what}`);
+  }
+};
+const BAD_EXPR = /\$\{|#\{/;
+
 const walk = (el, fn) => { fn(el); for (const c of el.flowElements || []) walk(c, fn); };
 for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Process')) {
   if (!proc.isExecutable) errors.push(`process ${proc.id}: isExecutable is not true`);
@@ -344,6 +351,11 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
       errors.push(`${el.id}: ioSpecification needs both inputSet and outputSet`);
     for (const a of el.dataInputAssociations || [])
       if (!a.targetRef) errors.push(`${el.id}: dataInputAssociation has no targetRef`);
+    for (const def of el.eventDefinitions || [])
+      if (def.$type === 'bpmn:TimerEventDefinition') timer(el, def);
+    const cond = el.conditionExpression?.body;
+    if (cond && BAD_EXPR.test(cond))
+      errors.push(`${el.id}: condition uses FEEL/UEL syntax ("${cond.trim()}") - this skill uses {{...}}`);
     if (el.$type === 'bpmn:ExclusiveGateway' && (el.outgoing || []).length > 1)
       for (const f of el.outgoing)
         if (!f.conditionExpression && f !== el.default)
@@ -361,9 +373,12 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`OK ${target} — layout applied, ${shaped.size} elements rendered, no findings`);
+'@
+Set-Content -Path (Join-Path $Runner 'finish.mjs') -Value $Finish -Encoding utf8
+Write-Host "Runner ready at $Runner"
 ```
 
-Run it against the generated file, which is rewritten in place with the diagram section:
+**Step 2 — finish the file.** Replace `.\process.bpmn` with your output path.
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -374,22 +389,21 @@ $NodeExe = if (Get-Command node -ErrorAction SilentlyContinue) { 'node' }
 if ($LASTEXITCODE -ne 0) { throw "Validation failed; see the findings above. Do not hand over this file." }
 ```
 
-`$Runner` and `$NodeExe` are resolved again here on purpose: each command runs in its own shell, so
-variables set in the setup block are gone by the time this one runs. The portable Node is found by
-wildcard so its version lives in one place.
+On success it prints `OK <file> — layout applied, N elements rendered, no findings`.
 
-On success it prints `OK <file> — layout applied, N elements rendered, no findings`. On failure it
-lists each finding and exits 1. **A file that has not printed `OK` is not finished** — fix the
-findings and run it again. Notes (`note: ...`) are advisory and do not fail the run.
+**A file that has not printed `OK` is not finished.** Fix the findings it lists and run step 2
+again. Lines beginning `note:` are advisory and do not fail the run. If a step throws, stop and
+tell the user what is missing — never hand over the file anyway, and never hand-write the diagram
+section.
 
-If either step throws, stop and tell the user what is missing. Never hand over the file anyway —
-it will open blank. Report the missing prerequisite; do not try to hand-write the diagram section.
+Both blocks re-resolve `$Runner` and `$NodeExe` on purpose: each command runs in its own shell, so
+variables from step 1 are gone by step 2.
 
 Two things to know about the output:
 
 - It re-serialises the file, normalising attribute order and rewriting `<formalExpression>` as
   `<expression xsi:type="tFormalExpression">`. Both are valid; do not undo it. This also fixes
-  child element order (§3) automatically.
+  child element order (§3) automatically, so §3 is guidance for writing, not something to police.
 - An embedded `subProcess` is treated as a black box: the parent renders collapsed and its
   children are laid out in a separate coordinate space, so they are not visible on the canvas.
   When a sub-flow must be visible, model it as a separate process invoked by a `callActivity`.
@@ -409,6 +423,8 @@ It fails the run on:
 - `ioSpecification` missing `<inputSet>` or `<outputSet>`
 - `dataInputAssociation` without `<targetRef>`
 - a flow out of an `exclusiveGateway` with no condition that is not the gateway's `default`
+- a timer value that is not valid ISO 8601, or that contains an expression
+- a condition written in FEEL (`#{}`) or UEL (`${}`) instead of `{{...}}`
 - `isExecutable` not true, or `targetNamespace` missing
 
 It reports as a note, without failing: a vendor namespace. That is a portability preference, not
