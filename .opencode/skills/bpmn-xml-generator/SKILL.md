@@ -44,6 +44,12 @@ Always required:
 Ask when relevant: timer events (ISO 8601), message/signal events, error and boundary events,
 sub-processes, and the variable names used in conditions.
 
+**Lanes.** The answer to "who is responsible" is already the lane list, so do not add a round trip.
+If it names **two or more** distinct parties, offer lanes in that same question — *"I can group
+these into lanes by responsible party (A, B, C); want that?"* — and say that lanes are visual
+grouping only, so assignment stays on the tasks either way and it is not a choice between them.
+One party, or no answer: no lanes, and do not raise it.
+
 For an ambiguous branch such as "approve or reject", confirm the gateway type, the condition on
 each outgoing flow, and where each path ends.
 
@@ -63,6 +69,8 @@ error, message, signal, escalation; interrupting or not).
 `eventBasedGateway` (first event wins).
 
 **Connector** — `sequenceFlow` with `sourceRef`, `targetRef`, optional `conditionExpression`.
+
+**Partition** — `laneSet` / `lane`, to group flow nodes visually by responsible party.
 
 **Unsupported** — CMMN, Choreography, Conversation, DataStore, Association.
 
@@ -156,6 +164,38 @@ standard BPMN, and are the portable equivalent of the vendor `assignee` / `candi
   </potentialOwner>
 </userTask>
 ```
+
+### Lanes
+A `laneSet` partitions the diagram visually. It carries **no** assignment semantics — a lane is a
+name and a list of `flowNodeRef`s — so lanes never replace `potentialOwner` / `humanPerformer`;
+use both. The `laneSet` goes first inside `<process>`, before the flow elements.
+
+Every flow node must appear in **exactly one** lane, or it is drawn outside the bands. Boundary
+events are the exception: they ride on their host task and may be left out.
+
+```xml
+<process id="vessel-ops" name="Vessel Ops" isExecutable="true">
+  <laneSet id="ls_main">
+    <lane id="lane_pm" name="Project Manager">
+      <flowNodeRef>start</flowNodeRef>
+      <flowNodeRef>plan</flowNodeRef>
+    </lane>
+    <lane id="lane_crew" name="Vessel Crew">
+      <flowNodeRef>execute</flowNodeRef>
+      <flowNodeRef>end</flowNodeRef>
+    </lane>
+  </laneSet>
+
+  <startEvent id="start" name="Request">
+    <outgoing>f1</outgoing>
+  </startEvent>
+  <!-- ... -->
+</process>
+```
+
+`bpmn-auto-layout` ignores lanes entirely, so `finish.mjs` (§7) bands the nodes and draws the lane
+shapes afterwards. Both lane failure modes are invisible — a file with no lane shapes, or a node in
+no lane, is still schema-valid and still imports cleanly — so §7 checks for both.
 
 ### serviceTask
 A plain `serviceTask`. How the engine dispatches it is engine configuration, not BPMN.
@@ -307,14 +347,68 @@ import { BpmnModdle } from 'bpmn-moddle';
 
 const [, , input, output] = process.argv;
 const target = output || input;
+const moddle = new BpmnModdle();
 const errors = [], notes = [];
 
-// Parse the INPUT first: layout silently drops references it cannot resolve.
-const before = await new BpmnModdle().fromXML(readFileSync(input, 'utf8'));
-for (const w of before.warnings) errors.push(`input: ${w.message}`);
+// Parse the INPUT first: the layout pass silently drops references it cannot resolve.
+for (const w of (await moddle.fromXML(readFileSync(input, 'utf8'))).warnings)
+  errors.push(`input: ${w.message}`);
 
-writeFileSync(target, await layoutProcess(readFileSync(input, 'utf8')), 'utf8');
-const { rootElement, warnings } = await new BpmnModdle().fromXML(readFileSync(target, 'utf8'));
+let xml = await layoutProcess(readFileSync(input, 'utf8'));
+let doc = await moddle.fromXML(xml);
+
+// --- lane pass: bpmn-auto-layout ignores lanes, so band the nodes and draw the lanes here ---
+const procs = doc.rootElement.rootElements.filter(e => e.$type === 'bpmn:Process');
+if (procs.some(p => p.laneSets?.length)) {
+  const BAND = 140, PAD = 40;
+  for (const proc of procs.filter(p => p.laneSets?.length)) {
+    const lanes = proc.laneSets[0].lanes || [];
+    const plane = doc.rootElement.diagrams[0].plane;
+    const shape = new Map(), edge = new Map();
+    for (const pe of plane.planeElement)
+      (pe.$type === 'bpmndi:BPMNShape' ? shape : edge).set(pe.bpmnElement.id, pe);
+
+    const laneOf = new Map();
+    lanes.forEach((l, i) => (l.flowNodeRef || []).forEach(n => laneOf.set(n.id, i)));
+    const boundary = (proc.flowElements || []).filter(e => e.$type === 'bpmn:BoundaryEvent');
+    const isBoundary = new Set(boundary.map(b => b.id));
+
+    for (const [id, i] of laneOf) {
+      if (isBoundary.has(id)) continue;
+      const s = shape.get(id); if (!s) continue;
+      s.bounds.y = PAD + i * BAND + (BAND - s.bounds.height) / 2;
+    }
+    // boundary events are not free-standing: they ride on their host's border
+    for (const b of boundary) {
+      const bs = shape.get(b.id), hs = shape.get(b.attachedToRef?.id);
+      if (!bs || !hs) continue;
+      bs.bounds.x = hs.bounds.x + hs.bounds.width - bs.bounds.width - 10;
+      bs.bounds.y = hs.bounds.y + hs.bounds.height - bs.bounds.height / 2;
+    }
+    for (const [id, e] of edge) {
+      const f = (proc.flowElements || []).find(x => x.id === id);
+      const a = shape.get(f?.sourceRef?.id)?.bounds, b = shape.get(f?.targetRef?.id)?.bounds;
+      if (!a || !b) continue;
+      const ay = a.y + a.height / 2, by = b.y + b.height / 2;
+      const ax = a.x + a.width, bx = b.x, mx = Math.round((ax + bx) / 2);
+      const pt = (x, y) => moddle.create('dc:Point', { x: Math.round(x), y: Math.round(y) });
+      e.waypoint = ay === by ? [pt(ax, ay), pt(bx, by)]
+                             : [pt(ax, ay), pt(mx, ay), pt(mx, by), pt(bx, by)];
+    }
+    const boxes = [...shape.values()].map(s => s.bounds);
+    const minX = Math.min(...boxes.map(b => b.x)) - PAD;
+    const maxX = Math.max(...boxes.map(b => b.x + b.width)) + PAD;
+    lanes.forEach((l, i) => plane.planeElement.push(moddle.create('bpmndi:BPMNShape', {
+      id: `${l.id}_di`, bpmnElement: l, isHorizontal: true,
+      bounds: moddle.create('dc:Bounds', { x: minX, y: PAD + i * BAND, width: maxX - minX, height: BAND })
+    })));
+  }
+  xml = (await moddle.toXML(doc.rootElement, { format: true })).xml;
+  doc = await moddle.fromXML(xml);
+}
+writeFileSync(target, xml, 'utf8');
+
+const { rootElement, warnings } = doc;
 for (const w of warnings) errors.push(w.message);
 
 const shaped = new Set();
@@ -337,10 +431,26 @@ const timer = (el, def) => {
   }
 };
 const BAD_EXPR = /\$\{|#\{/;
-
 const walk = (el, fn) => { fn(el); for (const c of el.flowElements || []) walk(c, fn); };
+
 for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Process')) {
   if (!proc.isExecutable) errors.push(`process ${proc.id}: isExecutable is not true`);
+
+  // --- lane checks: both failures are invisible to every other check ---
+  const lanes = proc.laneSets?.[0]?.lanes || [];
+  if (lanes.length) {
+    for (const l of lanes)
+      if (!shaped.has(l.id)) errors.push(`${l.id}: lane has no BPMNShape, so it will not be drawn`);
+    const count = new Map();
+    for (const l of lanes)
+      for (const n of l.flowNodeRef || []) count.set(n.id, (count.get(n.id) || 0) + 1);
+    for (const el of proc.flowElements || []) {
+      if (el.$type === 'bpmn:SequenceFlow' || el.$type === 'bpmn:BoundaryEvent') continue;
+      const c = count.get(el.id) || 0;
+      if (c !== 1) errors.push(`${el.id}: in ${c} lanes, must be in exactly 1 - it would float outside the bands`);
+    }
+  }
+
   walk(proc, el => {
     if (el.$type === 'bpmn:Process') return;
     if (!shaped.has(el.id) && !/SubProcess$/.test(el.$parent?.$type || ''))
@@ -426,6 +536,8 @@ It fails the run on:
 - a timer value that is not valid ISO 8601, or that contains an expression
 - a condition written in FEEL (`#{}`) or UEL (`${}`) instead of `{{...}}`
 - `isExecutable` not true, or `targetNamespace` missing
+- a lane with no `BPMNShape`, so it would not be drawn
+- a flow node in zero lanes or several, which would float outside the bands
 
 It reports as a note, without failing: a vendor namespace. That is a portability preference, not
 an error — such files are schema-valid and render in bpmn.io.
