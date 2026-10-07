@@ -28,6 +28,10 @@ Shell commands in this skill are **PowerShell**.
 **Never generate BPMN from an incomplete description.** Ask for every missing item below in a
 single response, then write.
 
+Do not infer or invent any of it. An assignee, a gateway condition and a variable name are facts
+about the user's process, not defaults you can pick — a plausible guess is indistinguishable from
+a fact in the output, and silently wrong. If it was not stated, it goes in the question.
+
 Always required:
 
 - **Process key** — lowercase, hyphen-separated, URL-safe (e.g. `order-approval`).
@@ -299,15 +303,64 @@ is `Stop` for the same reason: a native command that is missing, or that fails t
 errors, runs to the end and still **exits 0**, which reads as success and leads to handing over a
 file with no diagram section.
 
-Create `layout.mjs` inside that runner directory — `%TEMP%\bpmn-layout-runner\layout.mjs` — with
-the `write` tool:
+Create `finish.mjs` inside that runner directory — `%TEMP%\bpmn-layout-runner\finish.mjs` — with
+the `write` tool. It applies the layout **and validates the result**, so the check cannot be
+skipped separately:
 
 ```js
 import { readFileSync, writeFileSync } from 'fs';
 import { layoutProcess } from 'bpmn-auto-layout';
+import { BpmnModdle } from 'bpmn-moddle';
 
 const [, , input, output] = process.argv;
-writeFileSync(output || input, await layoutProcess(readFileSync(input, 'utf8')), 'utf8');
+const target = output || input;
+const errors = [], notes = [];
+
+// Parse the INPUT first: layout silently drops references it cannot resolve.
+const before = await new BpmnModdle().fromXML(readFileSync(input, 'utf8'));
+for (const w of before.warnings) errors.push(`input: ${w.message}`);
+
+writeFileSync(target, await layoutProcess(readFileSync(input, 'utf8')), 'utf8');
+const { rootElement, warnings } = await new BpmnModdle().fromXML(readFileSync(target, 'utf8'));
+for (const w of warnings) errors.push(w.message);
+
+const shaped = new Set();
+for (const d of rootElement.diagrams || [])
+  for (const e of d.plane?.planeElement || []) shaped.add(e.bpmnElement?.id);
+if (!(rootElement.diagrams || []).length)
+  errors.push('no BPMNDiagram: bpmn.io will show "no diagram to display"');
+if (!rootElement.targetNamespace) errors.push('definitions: targetNamespace is missing');
+
+const walk = (el, fn) => { fn(el); for (const c of el.flowElements || []) walk(c, fn); };
+for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Process')) {
+  if (!proc.isExecutable) errors.push(`process ${proc.id}: isExecutable is not true`);
+  walk(proc, el => {
+    if (el.$type === 'bpmn:Process') return;
+    if (!shaped.has(el.id) && !/SubProcess$/.test(el.$parent?.$type || ''))
+      errors.push(`${el.id}: no BPMNShape/BPMNEdge, will not render`);
+    if (el.$type === 'bpmn:BoundaryEvent' && !el.attachedToRef)
+      errors.push(`${el.id}: boundaryEvent has no attachedToRef`);
+    if (el.ioSpecification && (!el.ioSpecification.inputSets?.length || !el.ioSpecification.outputSets?.length))
+      errors.push(`${el.id}: ioSpecification needs both inputSet and outputSet`);
+    for (const a of el.dataInputAssociations || [])
+      if (!a.targetRef) errors.push(`${el.id}: dataInputAssociation has no targetRef`);
+    if (el.$type === 'bpmn:ExclusiveGateway' && (el.outgoing || []).length > 1)
+      for (const f of el.outgoing)
+        if (!f.conditionExpression && f !== el.default)
+          errors.push(`${f.id}: flow out of ${el.id} has no condition and is not its default`);
+  });
+}
+for (const a of Object.keys(rootElement.$attrs || {}))
+  if (/^xmlns:(?!xsi$|dc$|di$|bpmndi$)/.test(a))
+    notes.push(`${a} is a vendor namespace — valid and renders fine, but not portable`);
+
+for (const n of notes) console.log('note: ' + n);
+if (errors.length) {
+  console.error(`FAIL ${target}`);
+  for (const e of errors) console.error('  - ' + e);
+  process.exit(1);
+}
+console.log(`OK ${target} — layout applied, ${shaped.size} elements rendered, no findings`);
 ```
 
 Run it against the generated file, which is rewritten in place with the diagram section:
@@ -317,13 +370,17 @@ $ErrorActionPreference = 'Stop'
 $Runner = Join-Path ([IO.Path]::GetTempPath()) 'bpmn-layout-runner'
 $NodeExe = if (Get-Command node -ErrorAction SilentlyContinue) { 'node' }
            else { (Get-ChildItem (Join-Path $Runner 'node-*-win-x64\node.exe')).FullName }
-& $NodeExe (Join-Path $Runner 'layout.mjs') .\process.bpmn
-if ($LASTEXITCODE -ne 0) { throw "Layout failed; the file has no diagram section and will not open in bpmn.io." }
+& $NodeExe (Join-Path $Runner 'finish.mjs') .\process.bpmn
+if ($LASTEXITCODE -ne 0) { throw "Validation failed; see the findings above. Do not hand over this file." }
 ```
 
 `$Runner` and `$NodeExe` are resolved again here on purpose: each command runs in its own shell, so
 variables set in the setup block are gone by the time this one runs. The portable Node is found by
 wildcard so its version lives in one place.
+
+On success it prints `OK <file> — layout applied, N elements rendered, no findings`. On failure it
+lists each finding and exits 1. **A file that has not printed `OK` is not finished** — fix the
+findings and run it again. Notes (`note: ...`) are advisory and do not fail the run.
 
 If either step throws, stop and tell the user what is missing. Never hand over the file anyway —
 it will open blank. Report the missing prerequisite; do not try to hand-write the diagram section.
@@ -331,33 +388,39 @@ it will open blank. Report the missing prerequisite; do not try to hand-write th
 Two things to know about the output:
 
 - It re-serialises the file, normalising attribute order and rewriting `<formalExpression>` as
-  `<expression xsi:type="tFormalExpression">`. Both are valid; do not undo it.
+  `<expression xsi:type="tFormalExpression">`. Both are valid; do not undo it. This also fixes
+  child element order (§3) automatically.
 - An embedded `subProcess` is treated as a black box: the parent renders collapsed and its
   children are laid out in a separate coordinate space, so they are not visible on the canvas.
   When a sub-flow must be visible, model it as a separate process invoked by a `callActivity`.
 
-## 8. Validation checklist
+## 8. What the validator checks, and what it cannot
 
-Structure:
+`finish.mjs` (§7) is the validation step. It is not a checklist to apply from memory — reading the
+XML and judging it correct is exactly how the four defects in this repo's own examples survived
+until a parser was pointed at them.
 
-- Every element has a unique `id`.
-- Every `sequenceFlow` has `sourceRef` and `targetRef` resolving to declared IDs.
-- Every element has `<incoming>` except start events, and `<outgoing>` except end events.
-- Child elements are in schema order (§3) — `incoming`/`outgoing` first, event definitions last.
-- Every flow out of an `exclusiveGateway` has a condition, unless it is the gateway's `default`.
-- A `parallelGateway` join has one `<incoming>` per branch of its split.
-- Every `boundaryEvent` has `attachedToRef` and no `<incoming>`.
-- Timer values are valid ISO 8601 — durations start with `P`, dates carry a time zone.
-- `isExecutable="true"` on `<process>`; `targetNamespace` on `<definitions>`.
-- `<message>`, `<signal>`, and `<error>` are siblings of `<process>`.
+It fails the run on:
 
-Cleanliness in bpmn.io:
+- any `bpmn-moddle` parse warning, including unresolved references — checked against the **input**
+  as well, because the layout pass silently drops references it cannot resolve
+- a missing `<bpmndi:BPMNDiagram>`, or any flow node or sequence flow with no shape or edge
+- `boundaryEvent` without `attachedToRef`
+- `ioSpecification` missing `<inputSet>` or `<outputSet>`
+- `dataInputAssociation` without `<targetRef>`
+- a flow out of an `exclusiveGateway` with no condition that is not the gateway's `default`
+- `isExecutable` not true, or `targetNamespace` missing
 
-- A `<bpmndi:BPMNDiagram>` section is present (§7).
-- Every `<ioSpecification>`, if used at all, has both `<inputSet>` and `<outputSet>` — the schema
-  requires them. See `references/elements.md`.
-- Every `<dataInputAssociation>` has a `<targetRef>`, and each `<sourceRef>` names a declared
-  element `id`, not a bare variable name.
+It reports as a note, without failing: a vendor namespace. That is a portability preference, not
+an error — such files are schema-valid and render in bpmn.io.
+
+It cannot check whether the process is the *right* process. Still yours to judge:
+
+- the flow matches what the user described, and every path reaches an end event
+- conditions are collectively exhaustive, and the `default` is the branch they meant
+- a `parallelGateway` join has one `<incoming>` per branch of its split
+- timer durations are the intended intervals
+- names read the way the user would expect in a task list
 
 ## 9. Output
 
@@ -370,6 +433,6 @@ to open at demo.bpmn.io and that engine-specific wiring is theirs to add.
 
 | File | Read when |
 |---|---|
-| `references/elements.md` | Full attribute reference per element |
-| `references/examples.md` | Four complete processes, each verified to open in bpmn.io |
+| `references/elements.md` | Before using any element whose attributes are not shown in §5 |
+| `references/examples.md` | A complete worked file is needed, or §5 leaves the shape unclear |
 | `references/validation-errors.md` | A schema, `bpmn-moddle`, or bpmn.io error needs diagnosing |
