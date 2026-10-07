@@ -29,7 +29,9 @@ process. It:
 
 - opencode
 - PowerShell (the skill's shell commands are PowerShell)
-- Node.js ≥ 18 — for the diagram layout step
+- Node.js ≥ 18 for the diagram layout step — but you do not have to install it. If `node` is not
+  on PATH, the skill downloads the official portable Windows build into a temp directory, which
+  needs no installer and no administrator rights.
 
 ## Installation
 

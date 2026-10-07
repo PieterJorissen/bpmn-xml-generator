@@ -252,20 +252,55 @@ Inside XML, escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`. Timer values ar
 **A BPMN file with no `<bpmndi:BPMNDiagram>` does not open in bpmn.io.** It reports *"no diagram
 to display"* and renders an empty canvas. Always run the layout step before handing the file over.
 
-Requires Node.js ≥ 18 and network access for `npm`. Set up the runner once:
+Requires network access. Node.js is used, but does **not** have to be installed: if `node` is not
+on PATH, the runner fetches the official portable Windows build into its own temp directory. That
+needs no installer and no administrator rights. Set up the runner once:
 
 ```powershell
+$ErrorActionPreference = 'Stop'
 $Runner = Join-Path ([IO.Path]::GetTempPath()) 'bpmn-layout-runner'
-if (-not (Test-Path (Join-Path $Runner 'node_modules'))) {
-    New-Item -ItemType Directory -Force -Path $Runner | Out-Null
+New-Item -ItemType Directory -Force -Path $Runner | Out-Null
+
+# Node from PATH if present; otherwise a portable copy under $Runner (no install, no admin).
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    $NodeExe = 'node'
+    $NpmCli  = $null
+} else {
+    $NodeVersion = 'v24.21.0'
+    $NodeDir = Join-Path $Runner "node-$NodeVersion-win-x64"
+    $NodeExe = Join-Path $NodeDir 'node.exe'
+    $NpmCli  = Join-Path $NodeDir 'node_modules\npm\bin\npm-cli.js'
+    if (-not (Test-Path $NodeExe)) {
+        Write-Host "Node not found on PATH; downloading a portable copy to $Runner (no install, no admin)."
+        $Zip = Join-Path $Runner 'node.zip'
+        Invoke-WebRequest "https://nodejs.org/dist/$NodeVersion/node-$NodeVersion-win-x64.zip" -OutFile $Zip -UseBasicParsing
+        Expand-Archive -Path $Zip -DestinationPath $Runner -Force
+        Remove-Item $Zip
+    }
+    if (-not (Test-Path $NodeExe)) { throw "Portable Node download failed; expected $NodeExe." }
+}
+
+if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
     Push-Location $Runner
-    npm init -y | Out-Null
-    npm install bpmn-auto-layout
-    Pop-Location
+    try {
+        if ($NpmCli) { & $NodeExe $NpmCli install bpmn-auto-layout }
+        else         { npm install bpmn-auto-layout }
+    } finally { Pop-Location }
+}
+
+if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
+    throw "bpmn-auto-layout is not installed in $Runner. The layout step cannot run."
 }
 ```
 
-Create `layout.mjs` in `$Runner` with the `write` tool:
+The last check tests the result on disk rather than `$LASTEXITCODE`, and `$ErrorActionPreference`
+is `Stop` for the same reason: a native command that is missing, or that fails to launch, raises a
+*non-terminating* error and leaves the exit code untouched — so without these the block prints
+errors, runs to the end and still **exits 0**, which reads as success and leads to handing over a
+file with no diagram section.
+
+Create `layout.mjs` inside that runner directory — `%TEMP%\bpmn-layout-runner\layout.mjs` — with
+the `write` tool:
 
 ```js
 import { readFileSync, writeFileSync } from 'fs';
@@ -278,10 +313,20 @@ writeFileSync(output || input, await layoutProcess(readFileSync(input, 'utf8')),
 Run it against the generated file, which is rewritten in place with the diagram section:
 
 ```powershell
-node (Join-Path $Runner 'layout.mjs') .\process.bpmn
+$ErrorActionPreference = 'Stop'
+$Runner = Join-Path ([IO.Path]::GetTempPath()) 'bpmn-layout-runner'
+$NodeExe = if (Get-Command node -ErrorAction SilentlyContinue) { 'node' }
+           else { (Get-ChildItem (Join-Path $Runner 'node-*-win-x64\node.exe')).FullName }
+& $NodeExe (Join-Path $Runner 'layout.mjs') .\process.bpmn
+if ($LASTEXITCODE -ne 0) { throw "Layout failed; the file has no diagram section and will not open in bpmn.io." }
 ```
 
-If the layout step cannot run, say so plainly rather than delivering a file that will open blank.
+`$Runner` and `$NodeExe` are resolved again here on purpose: each command runs in its own shell, so
+variables set in the setup block are gone by the time this one runs. The portable Node is found by
+wildcard so its version lives in one place.
+
+If either step throws, stop and tell the user what is missing. Never hand over the file anyway —
+it will open blank. Report the missing prerequisite; do not try to hand-write the diagram section.
 
 Two things to know about the output:
 
