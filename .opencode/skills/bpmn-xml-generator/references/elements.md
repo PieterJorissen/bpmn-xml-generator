@@ -61,6 +61,37 @@ Inside an **event**: `incoming`, `outgoing`, then the event definition last.
 
 ---
 
+## 2b. Lanes
+
+A `<laneSet>` partitions a process visually. A lane is a name plus a list of `flowNodeRef`s — it
+has **no** resource-assignment semantics, so it never substitutes for `<potentialOwner>` /
+`<humanPerformer>` on a task.
+
+| Element | Attribute | Notes |
+|---|---|---|
+| `<laneSet>` | `id` | First child of `<process>`, before the flow elements |
+| `<lane>` | `id`, `name` | `name` is the band label shown in the diagram |
+| `<flowNodeRef>` | — | ID reference to a flow node; content, not an attribute |
+
+```xml
+<laneSet id="ls_main">
+  <lane id="lane_pm" name="Project Manager">
+    <flowNodeRef>start</flowNodeRef>
+    <flowNodeRef>plan</flowNodeRef>
+  </lane>
+</laneSet>
+```
+
+Per the schema a `<lane>` is `partitionElement?, flowNodeRef*, childLaneSet?` with `name` and
+`partitionElementRef`. Nested lanes (`childLaneSet`) are valid BPMN but are not laid out by this
+skill's tooling.
+
+Rules the §7 tooling enforces:
+- every flow node is in exactly one lane (boundary events excepted — they ride on their host)
+- every lane ends up with a `BPMNShape`, or it would silently not be drawn
+
+---
+
 ## 3. Events
 
 ### `<startEvent>`
