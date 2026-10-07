@@ -256,16 +256,30 @@ Requires Node.js ≥ 18 and network access for `npm`. Set up the runner once:
 
 ```powershell
 $Runner = Join-Path ([IO.Path]::GetTempPath()) 'bpmn-layout-runner'
+
+foreach ($Tool in 'node', 'npm') {
+    if (-not (Get-Command $Tool -ErrorAction SilentlyContinue)) {
+        throw "'$Tool' is not on PATH. The layout step needs Node.js 18 or newer (https://nodejs.org). If you have just installed it, restart the shell so the new PATH is picked up."
+    }
+}
+
 if (-not (Test-Path (Join-Path $Runner 'node_modules'))) {
     New-Item -ItemType Directory -Force -Path $Runner | Out-Null
     Push-Location $Runner
-    npm init -y | Out-Null
-    npm install bpmn-auto-layout
-    Pop-Location
+    try {
+        npm init -y | Out-Null
+        npm install bpmn-auto-layout
+        if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE." }
+    } finally { Pop-Location }
 }
 ```
 
-Create `layout.mjs` in `$Runner` with the `write` tool:
+The `Get-Command` guard is not optional. A missing `npm` raises a non-terminating
+`CommandNotFoundException`, so without it the block prints errors, runs to the end and **still
+exits 0** — which reads as success and leads to handing over a file with no diagram section.
+
+Create `layout.mjs` inside that runner directory — `%TEMP%\bpmn-layout-runner\layout.mjs` — with
+the `write` tool:
 
 ```js
 import { readFileSync, writeFileSync } from 'fs';
@@ -278,10 +292,16 @@ writeFileSync(output || input, await layoutProcess(readFileSync(input, 'utf8')),
 Run it against the generated file, which is rewritten in place with the diagram section:
 
 ```powershell
+$Runner = Join-Path ([IO.Path]::GetTempPath()) 'bpmn-layout-runner'
 node (Join-Path $Runner 'layout.mjs') .\process.bpmn
+if ($LASTEXITCODE -ne 0) { throw "Layout failed; the file has no diagram section and will not open in bpmn.io." }
 ```
 
-If the layout step cannot run, say so plainly rather than delivering a file that will open blank.
+`$Runner` is redefined here on purpose: each command runs in its own shell, so a variable set in
+the setup block above is gone by the time this one runs.
+
+If either step throws, stop and tell the user what is missing. Never hand over the file anyway —
+it will open blank. Report the missing prerequisite; do not try to hand-write the diagram section.
 
 Two things to know about the output:
 
