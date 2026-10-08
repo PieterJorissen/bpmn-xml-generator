@@ -89,6 +89,7 @@ skill's tooling.
 Rules the §7 tooling enforces:
 - every flow node is in exactly one lane (boundary events excepted — they ride on their host)
 - every lane ends up with a `BPMNShape`, or it would silently not be drawn
+- no two shapes overlap; a lane grows to fit parallel branches rather than stacking them
 
 ---
 
