@@ -37,7 +37,7 @@ fixes. Every entry below was reproduced against the OMG BPMN 2.0 XSD or bpmn-js.
 
 ### ERR-007: `Element 'ioSpecification': Missing child element(s)`
 **Cause:** An `<ioSpecification>` lists only `<dataInput>`/`<dataOutput>`. The schema requires at least one `<inputSet>` and one `<outputSet>`.  
-**Fix:** Add both sets, referencing the declared inputs and outputs — or drop the `ioSpecification` entirely, since it is optional. See `elements.md` §7.
+**Fix:** Add both sets, referencing the declared inputs and outputs — or drop the `ioSpecification` entirely, since it is optional. See `elements.md` §8.
 
 ### ERR-008: `Element 'dataInputAssociation': Missing child element(s)`
 **Cause:** A `<dataInputAssociation>` has no `<targetRef>`, which is mandatory.  

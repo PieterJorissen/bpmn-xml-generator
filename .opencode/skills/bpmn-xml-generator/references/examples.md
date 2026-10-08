@@ -594,7 +594,6 @@ businessRuleTask and an embedded subProcess.
 
 ## Note on the embedded sub-process in Example 4
 
-`bpmn-auto-layout` treats an embedded `subProcess` as a black box: the parent renders as a
-collapsed shape and the children are laid out in their own coordinate space. bpmn.io renders this
-without complaint, but the children are not visible on the canvas. When a sub-flow needs to be
-visible in the diagram, model it as a separate process invoked by a `callActivity` instead.
+Its children are laid out off-canvas and the parent renders collapsed — see `../SKILL.md` §7.
+When a sub-flow needs to be visible, model it as a separate process invoked by a `callActivity`.
+
