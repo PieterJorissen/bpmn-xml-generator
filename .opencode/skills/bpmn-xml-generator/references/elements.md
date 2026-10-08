@@ -61,7 +61,7 @@ Inside an **event**: `incoming`, `outgoing`, then the event definition last.
 
 ---
 
-## 2b. Lanes
+## 3. Lanes
 
 A `<laneSet>` partitions a process visually. A lane is a name plus a list of `flowNodeRef`s — it
 has **no** resource-assignment semantics, so it never substitutes for `<potentialOwner>` /
@@ -86,14 +86,14 @@ Per the schema a `<lane>` is `partitionElement?, flowNodeRef*, childLaneSet?` wi
 `partitionElementRef`. Nested lanes (`childLaneSet`) are valid BPMN but are not laid out by this
 skill's tooling.
 
-Rules the §7 tooling enforces:
+Rules the finish step (`../SKILL.md` §7) enforces:
 - every flow node is in exactly one lane (boundary events excepted — they ride on their host)
 - every lane ends up with a `BPMNShape`, or it would silently not be drawn
 - no two shapes overlap; a lane grows to fit parallel branches rather than stacking them
 
 ---
 
-## 3. Events
+## 4. Events
 
 ### `<startEvent>`
 | Attribute | Notes |
@@ -137,7 +137,7 @@ Must have `<outgoing>` but **no** `<incoming>`.
 
 ---
 
-## 4. Activities
+## 5. Activities
 
 ### `<task>`
 Generic task — passes through immediately with no side effects.
@@ -251,12 +251,11 @@ Embedded sub-process with its own start/end events.
 </subProcess>
 ```
 
-`bpmn-auto-layout` renders an embedded sub-process collapsed, with its children laid out in a
-separate coordinate space, so they do not appear on the canvas.
+An embedded sub-process renders collapsed — see `../SKILL.md` §7.
 
 ---
 
-## 5. Gateways
+## 6. Gateways
 
 ### `<exclusiveGateway>` (XOR)
 Exactly one outgoing flow is taken. The flow whose condition evaluates to `true` first (in
@@ -306,7 +305,7 @@ Race between events; the first to arrive wins. Must be followed by `intermediate
 
 ---
 
-## 6. Sequence Flows
+## 7. Sequence Flows
 
 ```xml
 <sequenceFlow id="flow_id" name="optional label"
@@ -326,7 +325,7 @@ Rules:
 
 ---
 
-## 7. Data & IO
+## 8. Data & IO
 
 `ioSpecification` is optional and most engines do not require it. If used, it must be
 schema-complete, which means **both** `<inputSet>` and `<outputSet>` are mandatory — the common
@@ -361,7 +360,7 @@ mistake of listing only `dataInput`/`dataOutput` is a validation error.
 
 ---
 
-## 8. Event Definitions
+## 9. Event Definitions
 
 ### `<timerEventDefinition>`
 ```xml
@@ -407,7 +406,7 @@ mistake of listing only `dataInput`/`dataOutput` is a validation error.
 
 ---
 
-## 9. Diagram Interchange
+## 10. Diagram Interchange
 
 Every file needs a `<bpmndi:BPMNDiagram>` as the last child of `<definitions>`, or bpmn.io reports
 *"no diagram to display"*. Generate it with `bpmn-auto-layout` rather than by hand — see

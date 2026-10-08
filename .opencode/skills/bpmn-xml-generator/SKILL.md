@@ -12,25 +12,33 @@ compatibility: opencode
 
 # BPMN Authoring
 
-Produces plain BPMN 2.0 XML: schema-valid against the OMG BPMN 2.0 XSD, parseable by
-`bpmn-moddle`, and importable into bpmn-js with no warnings.
-
-**Plain BPMN 2.0, no vendor extensions.** This is a portability choice, not a compatibility one:
-a `camunda:` namespace is valid under the BPMN schema and bpmn.io imports it without complaint.
-Staying vendor-neutral means the output works unchanged in any conforming tool, and engine-specific
-wiring (decision refs, connector configuration, variable mapping) stays in the engine, where the
-user configures it. If a user asks for their engine's extensions, add them — nothing breaks.
+Produces plain BPMN 2.0: schema-valid against the OMG BPMN 2.0 XSD and importable into bpmn-js
+with no warnings. No vendor extensions by default, so the output works in any conforming tool —
+if the user asks for their engine's, add them.
 
 Shell commands in this skill are **PowerShell**.
 
-## 1. Gather information before writing
+## 1. The procedure
+
+1. Gather what is missing (§2) — one question, then write.
+2. Write the XML (§4, §5) and **save it to `{process-key}.bpmn`** in the working directory, or to
+   the path the user gave.
+3. Run the finish step, both commands (§7). It adds the diagram and validates the file.
+4. Fix anything it reports and run step 3 again, until it prints `OK`.
+5. Tell the user the file is ready to open at demo.bpmn.io, and that engine-specific wiring is
+   theirs to add.
+
+The finish step works on a file on disk, so step 2 is not optional — XML that only exists in your
+reply cannot be laid out or validated.
+
+## 2. Gather information before writing
 
 **Never generate BPMN from an incomplete description.** Ask for every missing item below in a
 single response, then write.
 
 Do not infer or invent any of it. An assignee, a gateway condition and a variable name are facts
 about the user's process, not defaults you can pick — a plausible guess is indistinguishable from
-a fact in the output, and silently wrong. If it was not stated, it goes in the question.
+a fact in the output. If it was not stated, it goes in the question.
 
 Always required:
 
@@ -44,16 +52,19 @@ Always required:
 Ask when relevant: timer events (ISO 8601), message/signal events, error and boundary events,
 sub-processes, and the variable names used in conditions.
 
-**Lanes.** The answer to "who is responsible" is already the lane list, so do not add a round trip.
-If it names **two or more** distinct parties, offer lanes in that same question — *"I can group
-these into lanes by responsible party (A, B, C); want that?"* — and say that lanes are visual
-grouping only, so assignment stays on the tasks either way and it is not a choice between them.
-One party, or no answer: no lanes, and do not raise it.
-
 For an ambiguous branch such as "approve or reject", confirm the gateway type, the condition on
 each outgoing flow, and where each path ends.
 
-## 2. Supported elements
+**Lanes.** The responsible parties are already the lane list, so do not add a round trip. If they
+name two or more distinct parties, offer lanes in that same question — *"I can group these into
+lanes by responsible party (A, B, C); want that?"* — and say lanes are visual grouping only, so
+assignment stays on the tasks either way. One party, or no answer: no lanes, and do not raise it.
+
+Lanes cover the whole diagram, not only the human steps. Every flow node needs one, so agree where
+the rest go: put automated steps in a lane of their own (`System` or similar), and a gateway in the
+lane of whoever owns the decision.
+
+## 3. Supported elements
 
 Full attributes: `references/elements.md`. Do not use an element outside this list.
 
@@ -74,33 +85,16 @@ error, message, signal, escalation; interrupting or not).
 
 **Unsupported** — CMMN, Choreography, Conversation, DataStore, Association.
 
-## 3. Child element order is fixed
-
-The BPMN 2.0 schema defines child elements as an ordered sequence, so the wrong order is a
-validation error even when every element is individually correct. This is the single easiest
-way to produce an invalid file.
-
-Inside an **activity** (any task, `callActivity`, `subProcess`):
-
-```
-incoming, outgoing, ioSpecification?, property*, dataInputAssociation*,
-dataOutputAssociation*, potentialOwner / humanPerformer*, loopCharacteristics?
-```
-
-Inside an **event**: `incoming`, `outgoing`, then the event definition
-(`timerEventDefinition`, `messageEventDefinition`, …) **last**.
-
-Inside `<definitions>`: all root elements (`message`, `signal`, `error`, `process`) first, then
-`<bpmndi:BPMNDiagram>` last.
-
-`incoming` and `outgoing` always come first, before `ioSpecification` and before any event
-definition.
-
 ## 4. File template
 
 `targetNamespace` is mandatory and may be any valid URI; the engine does not read it. Preserve the
 existing value when editing a file. Declare `<message>`, `<signal>`, and `<error>` as siblings of
 `<process>`, never inside it.
+
+Child elements are an ordered sequence in the schema: `incoming` and `outgoing` come first, before
+`ioSpecification` and before any event definition, and a process-level `<property>` precedes the
+flow elements. Write them in that order — the finish step also normalises it. Full order in
+`references/elements.md`.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -112,8 +106,7 @@ existing value when editing a file. Declare `<message>`, `<signal>`, and `<error
   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
   id="Definitions_{process-key}"
   targetNamespace="http://bpmn.io/schema/bpmn"
-  exporter="bpmn-xml-generator"
-  exporterVersion="1.0">
+  exporter="bpmn-xml-generator">
 
   <process id="{process-key}" name="{Process Name}" isExecutable="true">
 
@@ -132,7 +125,7 @@ existing value when editing a file. Declare `<message>`, `<signal>`, and `<error
 
   </process>
 
-  <!-- BPMNDiagram is appended by the layout step in §7 -->
+  <!-- the finish step (§7) appends BPMNDiagram here -->
 
 </definitions>
 ```
@@ -170,8 +163,9 @@ A `laneSet` partitions the diagram visually. It carries **no** assignment semant
 name and a list of `flowNodeRef`s — so lanes never replace `potentialOwner` / `humanPerformer`;
 use both. The `laneSet` goes first inside `<process>`, before the flow elements.
 
-Every flow node must appear in **exactly one** lane, or it is drawn outside the bands. Boundary
-events are the exception: they ride on their host task and may be left out.
+Every flow node must appear in **exactly one** lane — including start and end events, gateways
+and service tasks, not just the human steps. Boundary events are the exception: they ride on their
+host task and may be left out.
 
 ```xml
 <process id="vessel-ops" name="Vessel Ops" isExecutable="true">
@@ -193,14 +187,8 @@ events are the exception: they ride on their host task and may be left out.
 </process>
 ```
 
-`bpmn-auto-layout` ignores lanes entirely, so `finish.mjs` (§7) bands the nodes and draws the lane
-shapes afterwards. A lane is as tall as it needs to be: `bpmn-auto-layout` separates parallel
-branches by y at the same x, so a lane holding both branches of a split keeps them on separate
-rows and grows to fit, rather than flattening them onto one row where they would land on identical
-coordinates.
-
-Every lane failure is invisible — no lane shapes, a node in no lane, or two nodes stacked on the
-same spot all stay schema-valid and import cleanly — so §7 checks for all three.
+`bpmn-auto-layout` ignores lanes, so the finish step (§7) bands the nodes and draws the lane
+shapes, growing each lane to fit the rows it needs.
 
 ### serviceTask
 A plain `serviceTask`. How the engine dispatches it is engine configuration, not BPMN.
@@ -283,8 +271,7 @@ so. `callActivity` names the called process with the standard `calledElement`.
 ## 6. Expression syntax
 
 Conditions use `{{expression}}`. This is a convention, not part of BPMN — bpmn.io treats a
-condition as opaque text, and each engine has its own expression language. Confirm it with the
-target engine.
+condition as opaque text, and each engine has its own language.
 
 ```
 {{variables.amount > 1000}}                         boolean
@@ -292,6 +279,9 @@ target engine.
 {{variables.items.length > 0}}                      array check
 {{variables.score >= 700 && variables.debt < 5000}} compound
 ```
+
+The validator enforces `{{...}}` and rejects FEEL (`#{}`) and UEL (`${}`). If the user's engine
+needs a different dialect, say so and let them substitute once the file validates.
 
 Inside XML, escape `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`. Timer values are ISO 8601 only —
 `{{...}}` never appears in a timer.
@@ -341,7 +331,7 @@ if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
     } finally { Pop-Location }
 }
 if (-not (Test-Path (Join-Path $Runner 'node_modules\bpmn-auto-layout'))) {
-    throw "bpmn-auto-layout is not installed in $Runner. The layout step cannot run."
+    throw "bpmn-auto-layout is not installed in $Runner. The finish step cannot run."
 }
 
 # Single-quoted here-string: literal, so the JS ${...} is not touched by PowerShell.
@@ -355,7 +345,7 @@ const target = output || input;
 const moddle = new BpmnModdle();
 const errors = [], notes = [];
 
-// Parse the INPUT first: the layout pass silently drops references it cannot resolve.
+// Parse the INPUT first: layout drops references it cannot resolve.
 for (const w of (await moddle.fromXML(readFileSync(input, 'utf8'))).warnings)
   errors.push(`input: ${w.message}`);
 
@@ -540,7 +530,7 @@ Set-Content -Path (Join-Path $Runner 'finish.mjs') -Value $Finish -Encoding utf8
 Write-Host "Runner ready at $Runner"
 ```
 
-**Step 2 — finish the file.** Replace `.\process.bpmn` with your output path.
+**Step 2 — finish the file.** Replace `.\process.bpmn` with the file you saved in §1 step 2.
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -563,23 +553,21 @@ variables from step 1 are gone by step 2.
 
 Two things to know about the output:
 
-- It re-serialises the file, normalising attribute order and rewriting `<formalExpression>` as
-  `<expression xsi:type="tFormalExpression">`. Both are valid; do not undo it. This also fixes
-  child element order (§3) automatically, so §3 is guidance for writing, not something to police.
+- It re-serialises the file, normalising attribute order and child element order, and rewriting
+  `<formalExpression>` as `<expression xsi:type="tFormalExpression">`. Both are valid; do not
+  undo it.
 - An embedded `subProcess` is treated as a black box: the parent renders collapsed and its
   children are laid out in a separate coordinate space, so they are not visible on the canvas.
   When a sub-flow must be visible, model it as a separate process invoked by a `callActivity`.
 
 ## 8. What the validator checks, and what it cannot
 
-`finish.mjs` (§7) is the validation step. It is not a checklist to apply from memory — reading the
-XML and judging it correct is exactly how the four defects in this repo's own examples survived
-until a parser was pointed at them.
+`finish.mjs` (§7) is the validation step, and it is not a checklist to apply from memory.
 
 It fails the run on:
 
 - any `bpmn-moddle` parse warning, including unresolved references — checked against the **input**
-  as well, because the layout pass silently drops references it cannot resolve
+  as well, because layout drops references it cannot resolve
 - a missing `<bpmndi:BPMNDiagram>`, or any flow node or sequence flow with no shape or edge
 - `boundaryEvent` without `attachedToRef`
 - `ioSpecification` missing `<inputSet>` or `<outputSet>`
@@ -588,12 +576,11 @@ It fails the run on:
 - a timer value that is not valid ISO 8601, or that contains an expression
 - a condition written in FEEL (`#{}`) or UEL (`${}`) instead of `{{...}}`
 - `isExecutable` not true, or `targetNamespace` missing
-- a lane with no `BPMNShape`, so it would not be drawn
-- a flow node in zero lanes or several, which would float outside the bands
-- two shapes overlapping, where one element hides another and looks simply absent
+- a lane with no `BPMNShape`
+- a flow node in zero lanes or several
+- two shapes overlapping, where one element hides another
 
-It reports as a note, without failing: a vendor namespace. That is a portability preference, not
-an error — such files are schema-valid and render in bpmn.io.
+A vendor namespace is reported as a note and does not fail the run.
 
 It cannot check whether the process is the *right* process. Still yours to judge:
 
@@ -603,12 +590,12 @@ It cannot check whether the process is the *right* process. Still yours to judge
 - timer durations are the intended intervals
 - names read the way the user would expect in a task list
 
-## 9. Output
+## 9. Conventions
 
-Write the complete XML — never truncate. Use 2-space indentation, kebab-case process IDs,
-`flow_{source}_to_{target}` flow IDs, `gw_{purpose}` gateway IDs, and group all `sequenceFlow`
-elements at the bottom of `<process>`. Run the layout step, then tell the user the file is ready
-to open at demo.bpmn.io and that engine-specific wiring is theirs to add.
+- Write the complete XML — never truncate.
+- 2-space indentation.
+- Process IDs kebab-case; flow IDs `flow_{source}_to_{target}`; gateway IDs `gw_{purpose}`.
+- All `sequenceFlow` elements grouped at the bottom of `<process>`, after the nodes.
 
 ## 10. References
 
