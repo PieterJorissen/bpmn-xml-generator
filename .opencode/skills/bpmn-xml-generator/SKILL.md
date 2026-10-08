@@ -194,8 +194,13 @@ events are the exception: they ride on their host task and may be left out.
 ```
 
 `bpmn-auto-layout` ignores lanes entirely, so `finish.mjs` (§7) bands the nodes and draws the lane
-shapes afterwards. Both lane failure modes are invisible — a file with no lane shapes, or a node in
-no lane, is still schema-valid and still imports cleanly — so §7 checks for both.
+shapes afterwards. A lane is as tall as it needs to be: `bpmn-auto-layout` separates parallel
+branches by y at the same x, so a lane holding both branches of a split keeps them on separate
+rows and grows to fit, rather than flattening them onto one row where they would land on identical
+coordinates.
+
+Every lane failure is invisible — no lane shapes, a node in no lane, or two nodes stacked on the
+same spot all stay schema-valid and import cleanly — so §7 checks for all three.
 
 ### serviceTask
 A plain `serviceTask`. How the engine dispatches it is engine configuration, not BPMN.
@@ -360,7 +365,7 @@ let doc = await moddle.fromXML(xml);
 // --- lane pass: bpmn-auto-layout ignores lanes, so band the nodes and draw the lanes here ---
 const procs = doc.rootElement.rootElements.filter(e => e.$type === 'bpmn:Process');
 if (procs.some(p => p.laneSets?.length)) {
-  const BAND = 140, PAD = 40;
+  const MIN_BAND = 140, ROW = 110, PAD = 40;
   for (const proc of procs.filter(p => p.laneSets?.length)) {
     const lanes = proc.laneSets[0].lanes || [];
     const plane = doc.rootElement.diagrams[0].plane;
@@ -373,10 +378,38 @@ if (procs.some(p => p.laneSets?.length)) {
     const boundary = (proc.flowElements || []).filter(e => e.$type === 'bpmn:BoundaryEvent');
     const isBoundary = new Set(boundary.map(b => b.id));
 
+    // bpmn-auto-layout separates parallel branches by y at the same x. Flattening a lane to one
+    // row destroys that, so keep the rows it chose: cluster each lane's nodes by their original
+    // y and give every row its own strip. A lane grows to fit its rows instead of a fixed height.
+    const rowOf = new Map(), rowsIn = [];
+    lanes.forEach((l, i) => {
+      const members = (l.flowNodeRef || []).filter(n => !isBoundary.has(n.id) && shape.has(n.id));
+      const centres = [...new Set(members.map(n => {
+        const b = shape.get(n.id).bounds; return Math.round(b.y + b.height / 2);
+      }))].sort((a, b) => a - b);
+      const bands = [];
+      for (const c of centres) {
+        const last = bands[bands.length - 1];
+        if (last !== undefined && c - last <= 20) continue;
+        bands.push(c);
+      }
+      for (const n of members) {
+        const b = shape.get(n.id).bounds, c = b.y + b.height / 2;
+        let r = 0;
+        bands.forEach((bc, k) => { if (Math.abs(c - bc) <= 20 || c > bc) r = k; });
+        rowOf.set(n.id, r);
+      }
+      rowsIn[i] = Math.max(1, bands.length);
+    });
+    const height = rowsIn.map(r => Math.max(MIN_BAND, r * ROW));
+    const top = height.reduce((acc, h, i) => (acc.push((acc[i] ?? PAD)), acc), [PAD])
+                      .map((_, i) => PAD + height.slice(0, i).reduce((a, b) => a + b, 0));
+
     for (const [id, i] of laneOf) {
       if (isBoundary.has(id)) continue;
       const s = shape.get(id); if (!s) continue;
-      s.bounds.y = PAD + i * BAND + (BAND - s.bounds.height) / 2;
+      const strip = height[i] / rowsIn[i], r = rowOf.get(id) || 0;
+      s.bounds.y = top[i] + r * strip + (strip - s.bounds.height) / 2;
     }
     // boundary events are not free-standing: they ride on their host's border
     for (const b of boundary) {
@@ -400,7 +433,7 @@ if (procs.some(p => p.laneSets?.length)) {
     const maxX = Math.max(...boxes.map(b => b.x + b.width)) + PAD;
     lanes.forEach((l, i) => plane.planeElement.push(moddle.create('bpmndi:BPMNShape', {
       id: `${l.id}_di`, bpmnElement: l, isHorizontal: true,
-      bounds: moddle.create('dc:Bounds', { x: minX, y: PAD + i * BAND, width: maxX - minX, height: BAND })
+      bounds: moddle.create('dc:Bounds', { x: minX, y: top[i], width: maxX - minX, height: height[i] })
     })));
   }
   xml = (await moddle.toXML(doc.rootElement, { format: true })).xml;
@@ -411,9 +444,12 @@ writeFileSync(target, xml, 'utf8');
 const { rootElement, warnings } = doc;
 for (const w of warnings) errors.push(w.message);
 
-const shaped = new Set();
+const shaped = new Set(), shapeBounds = new Map();
 for (const d of rootElement.diagrams || [])
-  for (const e of d.plane?.planeElement || []) shaped.add(e.bpmnElement?.id);
+  for (const e of d.plane?.planeElement || []) {
+    shaped.add(e.bpmnElement?.id);
+    if (e.$type === 'bpmndi:BPMNShape' && e.bounds) shapeBounds.set(e.bpmnElement?.id, e.bounds);
+  }
 if (!(rootElement.diagrams || []).length)
   errors.push('no BPMNDiagram: bpmn.io will show "no diagram to display"');
 if (!rootElement.targetNamespace) errors.push('definitions: targetNamespace is missing');
@@ -450,6 +486,22 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
       if (c !== 1) errors.push(`${el.id}: in ${c} lanes, must be in exactly 1 - it would float outside the bands`);
     }
   }
+
+  // Two shapes on top of each other render as one. Nothing else notices: the file stays
+  // schema-valid and imports clean, so the lost element is invisible.
+  const box = new Map();
+  for (const el of proc.flowElements || []) {
+    if (el.$type === 'bpmn:SequenceFlow' || el.$type === 'bpmn:BoundaryEvent') continue;
+    const b = shapeBounds.get(el.id); if (b) box.set(el.id, b);
+  }
+  const ids = [...box.keys()];
+  for (let i = 0; i < ids.length; i++)
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = box.get(ids[i]), b = box.get(ids[j]);
+      if (a.x < b.x + b.width && b.x < a.x + a.width &&
+          a.y < b.y + b.height && b.y < a.y + a.height)
+        errors.push(`${ids[i]} and ${ids[j]} overlap at (${a.x},${a.y})/(${b.x},${b.y}) - one hides the other`);
+    }
 
   walk(proc, el => {
     if (el.$type === 'bpmn:Process') return;
@@ -538,6 +590,7 @@ It fails the run on:
 - `isExecutable` not true, or `targetNamespace` missing
 - a lane with no `BPMNShape`, so it would not be drawn
 - a flow node in zero lanes or several, which would float outside the bands
+- two shapes overlapping, where one element hides another and looks simply absent
 
 It reports as a note, without failing: a vendor namespace. That is a portability preference, not
 an error — such files are schema-valid and render in bpmn.io.
