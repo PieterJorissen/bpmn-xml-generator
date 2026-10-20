@@ -3,6 +3,14 @@
 Attribute reference for the supported BPMN 2.0 elements. Everything here is plain BPMN 2.0 — no
 vendor namespace. Validated against the OMG BPMN 2.0 XSD.
 
+The **Required** column has one meaning throughout:
+
+| Value | Meaning |
+|---|---|
+| `schema` | The OMG XSD rejects the file without it. |
+| `skill` | The XSD allows it to be absent, but this skill always writes it — ids must be unique for references and diagram interchange, and names are what the reader sees. |
+| `optional` | Write it when it adds meaning. |
+
 ---
 
 ## 1. Root Elements
@@ -10,11 +18,10 @@ vendor namespace. Validated against the OMG BPMN 2.0 XSD.
 ### `<definitions>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | Unique identifier, e.g. `Definitions_order-approval` |
-| `targetNamespace` | ✅ | Any valid URI. Not read by the engine — required by the BPMN 2.0 XML schema. Preserve the original value when editing existing files. For new files, `http://bpmn.io/schema/bpmn` is the conventional default. |
-| `name` | — | Human label |
-| `exporter` | — | Tool name |
-| `exporterVersion` | — | Tool version |
+| `id` | skill | Unique identifier, e.g. `Definitions_order-approval`. Optional in the XSD. |
+| `targetNamespace` | schema | Any valid URI; the engine does not read it. Preserve the original value when editing an existing file. `http://bpmn.io/schema/bpmn` for new files. |
+| `name` | optional | Human label |
+| `exporter` | optional | Tool name |
 
 Namespaces on `<definitions>`:
 ```
@@ -34,10 +41,10 @@ Child order: all root elements (`message`, `signal`, `error`, `process`) first, 
 ### `<process>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | Becomes the process identifier/key in the engine |
-| `name` | ✅ | Human-readable label |
-| `isExecutable` | ✅ | Must be `true` |
-| `processType` | — | `None` (default), `Public`, `Private` |
+| `id` | skill | Becomes the process identifier/key in the engine |
+| `name` | skill | Human-readable label |
+| `isExecutable` | skill | Must be `true`; the finish step fails the file otherwise. Optional in the XSD. |
+| `processType` | optional | `None` (default), `Public`, `Private` |
 
 Child order: `property*`, then flow elements (events, activities, gateways, sequence flows), then
 artifacts. A `<property>` placed after the flow elements is a schema error.
@@ -67,11 +74,15 @@ A `<laneSet>` partitions a process visually. A lane is a name plus a list of `fl
 has **no** resource-assignment semantics, so it never substitutes for `<potentialOwner>` /
 `<humanPerformer>` on a task.
 
-| Element | Attribute | Notes |
+`<laneSet>` is the first child of `<process>`, before the flow elements.
+
+| Attribute | Required | Notes |
 |---|---|---|
-| `<laneSet>` | `id` | First child of `<process>`, before the flow elements |
-| `<lane>` | `id`, `name` | `name` is the band label shown in the diagram |
-| `<flowNodeRef>` | — | ID reference to a flow node; content, not an attribute |
+| `laneSet/@id` | skill | |
+| `lane/@id` | skill | |
+| `lane/@name` | skill | The band label shown in the diagram |
+
+`<flowNodeRef>` is element content, not an attribute: one per flow node in the lane.
 
 ```xml
 <laneSet id="ls_main">
@@ -96,10 +107,10 @@ Rules the finish step (`../SKILL.md` §7) enforces:
 ## 4. Events
 
 ### `<startEvent>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label shown in diagrams |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | label shown in diagrams |
 
 **None start** (no child event definition): process starts immediately on instantiation.  
 **Timer start**: child `<timerEventDefinition>` — fires on schedule.  
@@ -107,10 +118,10 @@ Rules the finish step (`../SKILL.md` §7) enforces:
 **Signal start**: child `<signalEventDefinition signalRef="...">`.
 
 ### `<endEvent>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | label |
 
 **None end**: normal completion.  
 **Terminate end**: `<terminateEventDefinition/>` — cancels entire process instance.  
@@ -127,10 +138,10 @@ Supported definitions: Message, Signal, Escalation.
 ### `<boundaryEvent>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | |
-| `name` | — | label |
-| `attachedToRef` | ✅ | ID of the activity this event is attached to |
-| `cancelActivity` | — | `true` (interrupting, default) or `false` (non-interrupting) |
+| `id` | skill | |
+| `name` | skill | label |
+| `attachedToRef` | schema | ID of the activity this event is attached to |
+| `cancelActivity` | optional | `true` (interrupting, default) or `false` (non-interrupting) |
 
 Supported definitions: Timer, Error, Message, Signal, Escalation.  
 Must have `<outgoing>` but **no** `<incoming>`.
@@ -149,10 +160,10 @@ Generic task — passes through immediately with no side effects.
 ```
 
 ### `<userTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | displayed as task name in UI |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | Displayed as the task name in a task list |
 
 Assignment uses the standard resource roles, placed **after** `<incoming>`/`<outgoing>`:
 
@@ -175,20 +186,20 @@ A due date and a form reference have no standard BPMN attribute. Leave them out;
 configuration.
 
 ### `<serviceTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-| `implementation` | optional; `##WebService` (default) or `##unspecified` |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | label |
+| `implementation` | optional | `##WebService` (default) or `##unspecified` |
 
 How the engine dispatches the task is engine configuration, not BPMN. Emit a plain `serviceTask`.
 
 ### `<scriptTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-| `scriptFormat` | e.g. `"javascript"` |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | label |
+| `scriptFormat` | optional | e.g. `"javascript"` |
 
 ```xml
 <scriptTask id="compute_score" name="Compute Score" scriptFormat="javascript">
@@ -225,9 +236,11 @@ no standard BPMN attribute — it is engine-specific and is left out.
 
 ### `<callActivity>`
 Invokes another process definition as a sub-process.
-| Attribute | Notes |
-|---|---|
-| `calledElement` | key of the target process definition |
+| Attribute | Required | Notes |
+|---|---|---|
+| `id` | skill | |
+| `name` | skill | label |
+| `calledElement` | skill | Key of the target process definition. Optional in the XSD, but a `callActivity` without it calls nothing. |
 
 ```xml
 <callActivity id="run_kyc" name="Run KYC Process" calledElement="kyc-check">
@@ -326,6 +339,35 @@ Rules:
 ---
 
 ## 8. Data & IO
+
+### `<dataObject>` and `<dataObjectReference>`
+
+A `<dataObject>` is the data itself and has no shape — it is **never drawn**. A
+`<dataObjectReference>` points at one and is what appears on the canvas, as a document glyph. One
+`dataObject` may have several references.
+
+| Attribute | Required | Notes |
+|---|---|---|
+| `dataObject/@id` | skill | |
+| `dataObject/@name` | skill | |
+| `dataObjectReference/@id` | skill | |
+| `dataObjectReference/@name` | skill | The label under the glyph |
+| `dataObjectReference/@dataObjectRef` | skill | ID of the `<dataObject>`. Optional in the XSD; a reference without it points at nothing. |
+
+```xml
+<dataObject id="do_invoice" name="Invoice"/>
+<dataObjectReference id="dor_invoice" name="Invoice" dataObjectRef="do_invoice"/>
+```
+
+Both are flow elements but **not** flow nodes, so neither can appear in a lane's
+`<flowNodeRef>` — that property is typed `FlowNode`. The finish step exempts them from the
+one-node-one-lane rule for that reason.
+
+Rules the finish step (`../SKILL.md` §7) enforces:
+- a `dataObject` must not carry a `BPMNShape`
+- a `dataObjectReference` must resolve its `dataObjectRef`
+- every data association must have a `BPMNEdge`, or the link is invisible
+
 
 `ioSpecification` is optional and most engines do not require it. If used, it must be
 schema-complete, which means **both** `<inputSet>` and `<outputSet>` are mandatory — the common
