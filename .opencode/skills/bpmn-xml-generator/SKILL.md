@@ -83,7 +83,12 @@ error, message, signal, escalation; interrupting or not).
 
 **Partition** — `laneSet` / `lane`, to group flow nodes visually by responsible party.
 
-**Unsupported** — CMMN, Choreography, Conversation, DataStore, Association.
+**Data** — `dataObject` with a `dataObjectReference`, linked to an activity by
+`dataInputAssociation` / `dataOutputAssociation`.
+
+**Unsupported** — CMMN, Choreography, Conversation, Association, and `dataStore` /
+`dataStoreReference`. A `dataStore` is persistent storage outside the process and is a different
+element from the `dataObject` above, which is data flowing through this process instance.
 
 ## 4. File template
 
@@ -189,6 +194,46 @@ host task and may be left out.
 
 `bpmn-auto-layout` ignores lanes, so the finish step (§7) bands the nodes and draws the lane
 shapes, growing each lane to fit the rows it needs.
+
+### Data objects
+A `<dataObject>` is the data itself and is **never drawn**; a `<dataObjectReference>` points at it
+and is what appears on the canvas. Declare both, then link the reference to an activity with
+`<dataOutputAssociation>` (the activity produces it) or `<dataInputAssociation>` (it consumes it).
+One `dataObject` may have several references.
+
+`<targetRef>` is mandatory on both association types. An input association reads from the
+reference, so the reference id goes in `<sourceRef>` and a `<property>` on the activity receives
+it; an output association writes to the reference, so the reference id is the `<targetRef>`.
+
+```xml
+<process id="invoicing" name="Invoicing" isExecutable="true">
+  <dataObject id="do_invoice" name="Invoice"/>
+  <dataObjectReference id="dor_invoice" name="Invoice" dataObjectRef="do_invoice"/>
+
+  <userTask id="draft" name="Draft Invoice">
+    <incoming>f1</incoming>
+    <outgoing>f2</outgoing>
+    <dataOutputAssociation id="doa_draft">
+      <targetRef>dor_invoice</targetRef>
+    </dataOutputAssociation>
+  </userTask>
+
+  <userTask id="approve" name="Approve Invoice">
+    <incoming>f2</incoming>
+    <outgoing>f3</outgoing>
+    <property id="prop_invoice" name="invoice"/>
+    <dataInputAssociation id="dia_approve">
+      <sourceRef>dor_invoice</sourceRef>
+      <targetRef>prop_invoice</targetRef>
+    </dataInputAssociation>
+  </userTask>
+  <!-- ... -->
+</process>
+```
+
+Data elements are not flow nodes, so they are never listed in a lane's `<flowNodeRef>`. The finish
+step (§7) places the reference below the diagram, under the activities that use it, and draws each
+association as an edge; `bpmn-auto-layout` draws neither.
 
 ### serviceTask
 A plain `serviceTask`. How the engine dispatches it is engine configuration, not BPMN.
@@ -352,9 +397,13 @@ for (const w of (await moddle.fromXML(readFileSync(input, 'utf8'))).warnings)
 let xml = await layoutProcess(readFileSync(input, 'utf8'));
 let doc = await moddle.fromXML(xml);
 
-// --- lane pass: bpmn-auto-layout ignores lanes, so band the nodes and draw the lanes here ---
 const procs = doc.rootElement.rootElements.filter(e => e.$type === 'bpmn:Process');
+let touched = false;   // any DI we add must be re-serialised before the file is written
+
+
+// --- lane pass: bpmn-auto-layout ignores lanes, so band the nodes and draw the lanes here ---
 if (procs.some(p => p.laneSets?.length)) {
+  touched = true;
   const MIN_BAND = 140, ROW = 110, PAD = 40;
   for (const proc of procs.filter(p => p.laneSets?.length)) {
     const lanes = proc.laneSets[0].lanes || [];
@@ -426,6 +475,59 @@ if (procs.some(p => p.laneSets?.length)) {
       bounds: moddle.create('dc:Bounds', { x: minX, y: top[i], width: maxX - minX, height: height[i] })
     })));
   }
+}
+
+// --- data objects: bpmn-auto-layout gives the reference a shape but draws no association
+// edges, and gives the non-drawable <dataObject> a task-sized shape. Fix both. ---
+const DATA_W = 36, DATA_H = 50, DATA_GAP = 60;
+for (const proc of procs) {
+  const plane = doc.rootElement.diagrams?.[0]?.plane;
+  if (!plane) continue;
+  const els = proc.flowElements || [];
+  const refs = els.filter(e => e.$type === 'bpmn:DataObjectReference');
+  if (!refs.length) continue;
+  touched = true;
+  const shape = new Map();
+  for (const pe of plane.planeElement)
+    if (pe.$type === 'bpmndi:BPMNShape') shape.set(pe.bpmnElement.id, pe);
+
+  // a <dataObject> is not drawable; drop the shape the layouter invented for it
+  const bare = new Set(els.filter(e => e.$type === 'bpmn:DataObject').map(e => e.id));
+  plane.planeElement = plane.planeElement.filter(
+    pe => !(pe.$type === 'bpmndi:BPMNShape' && bare.has(pe.bpmnElement.id)));
+
+  const assocOf = ref => els.flatMap(a => [
+    ...(a.dataOutputAssociations || []).filter(x => x.targetRef?.id === ref.id)
+       .map(x => ({ assoc: x, host: a, out: true })),
+    ...(a.dataInputAssociations || []).filter(x => (x.sourceRef || []).some(r => r.id === ref.id))
+       .map(x => ({ assoc: x, host: a, out: false }))]);
+
+  // measure after the bogus shapes are gone, and ignore the data objects themselves
+  const isData = new Set(refs.map(r => r.id));
+  const below = Math.max(...[...shape.entries()]
+    .filter(([id]) => !bare.has(id) && !isData.has(id))
+    .map(([, p]) => p.bounds.y + p.bounds.height));
+  refs.forEach((ref, i) => {
+    const links = assocOf(ref);
+    const hosts = links.map(l => shape.get(l.host.id)?.bounds).filter(Boolean);
+    const cx = hosts.length
+      ? hosts.reduce((a, b) => a + b.x + b.width / 2, 0) / hosts.length
+      : 100 + i * (DATA_W + 40);
+    const rs = shape.get(ref.id) || plane.planeElement[plane.planeElement.push(
+      moddle.create('bpmndi:BPMNShape', { id: `${ref.id}_di`, bpmnElement: ref,
+        bounds: moddle.create('dc:Bounds', { x: 0, y: 0, width: DATA_W, height: DATA_H }) })) - 1];
+    Object.assign(rs.bounds, { x: Math.round(cx - DATA_W / 2), y: Math.round(below + DATA_GAP),
+                               width: DATA_W, height: DATA_H });
+    for (const { assoc, host, out } of links) {
+      const h = shape.get(host.id)?.bounds; if (!h) continue;
+      const pt = (x, y) => moddle.create('dc:Point', { x: Math.round(x), y: Math.round(y) });
+      const a = pt(h.x + h.width / 2, h.y + h.height), b = pt(rs.bounds.x + DATA_W / 2, rs.bounds.y);
+      plane.planeElement.push(moddle.create('bpmndi:BPMNEdge', {
+        id: `${assoc.id}_di`, bpmnElement: assoc, waypoint: out ? [a, b] : [b, a] }));
+    }
+  });
+}
+if (touched) {
   xml = (await moddle.toXML(doc.rootElement, { format: true })).xml;
   doc = await moddle.fromXML(xml);
 }
@@ -443,6 +545,9 @@ for (const d of rootElement.diagrams || [])
 if (!(rootElement.diagrams || []).length)
   errors.push('no BPMNDiagram: bpmn.io will show "no diagram to display"');
 if (!rootElement.targetNamespace) errors.push('definitions: targetNamespace is missing');
+
+const NOT_A_FLOW_NODE = new Set(['bpmn:SequenceFlow', 'bpmn:DataObject',
+  'bpmn:DataObjectReference', 'bpmn:DataStoreReference', 'bpmn:Association']);
 
 const DUR  = /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?!$)(\d+H)?(\d+M)?(\d+(\.\d+)?S)?)?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
@@ -471,7 +576,8 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
     for (const l of lanes)
       for (const n of l.flowNodeRef || []) count.set(n.id, (count.get(n.id) || 0) + 1);
     for (const el of proc.flowElements || []) {
-      if (el.$type === 'bpmn:SequenceFlow' || el.$type === 'bpmn:BoundaryEvent') continue;
+      // lane/flowNodeRef is typed FlowNode: data elements and flows cannot be referenced
+      if (NOT_A_FLOW_NODE.has(el.$type) || el.$type === 'bpmn:BoundaryEvent') continue;
       const c = count.get(el.id) || 0;
       if (c !== 1) errors.push(`${el.id}: in ${c} lanes, must be in exactly 1 - it would float outside the bands`);
     }
@@ -495,8 +601,17 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
 
   walk(proc, el => {
     if (el.$type === 'bpmn:Process') return;
-    if (!shaped.has(el.id) && !/SubProcess$/.test(el.$parent?.$type || ''))
+    if (el.$type === 'bpmn:DataObject') {
+      // not a drawable element; only its reference is
+      if (shaped.has(el.id)) errors.push(`${el.id}: a dataObject must not have a BPMNShape`);
+    } else if (!shaped.has(el.id) && !/SubProcess$/.test(el.$parent?.$type || '')) {
       errors.push(`${el.id}: no BPMNShape/BPMNEdge, will not render`);
+    }
+    if (el.$type === 'bpmn:DataObjectReference' && !el.dataObjectRef)
+      errors.push(`${el.id}: dataObjectReference has no resolvable dataObjectRef`);
+    for (const a of [...(el.dataInputAssociations || []), ...(el.dataOutputAssociations || [])])
+      if (!shaped.has(a.id))
+        errors.push(`${a.id}: data association on ${el.id} has no BPMNEdge, so the link is invisible`);
     if (el.$type === 'bpmn:BoundaryEvent' && !el.attachedToRef)
       errors.push(`${el.id}: boundaryEvent has no attachedToRef`);
     if (el.ioSpecification && (!el.ioSpecification.inputSets?.length || !el.ioSpecification.outputSets?.length))
@@ -579,6 +694,9 @@ It fails the run on:
 - a lane with no `BPMNShape`
 - a flow node in zero lanes or several
 - two shapes overlapping, where one element hides another
+- a `dataObject` carrying a `BPMNShape`, which is not a drawable element
+- a `dataObjectReference` whose `dataObjectRef` does not resolve
+- a data association with no `BPMNEdge`, which leaves the link invisible
 
 A vendor namespace is reported as a note and does not fail the run.
 

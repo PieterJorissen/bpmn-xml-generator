@@ -340,6 +340,35 @@ Rules:
 
 ## 8. Data & IO
 
+### `<dataObject>` and `<dataObjectReference>`
+
+A `<dataObject>` is the data itself and has no shape — it is **never drawn**. A
+`<dataObjectReference>` points at one and is what appears on the canvas, as a document glyph. One
+`dataObject` may have several references.
+
+| Attribute | Required | Notes |
+|---|---|---|
+| `dataObject/@id` | skill | |
+| `dataObject/@name` | skill | |
+| `dataObjectReference/@id` | skill | |
+| `dataObjectReference/@name` | skill | The label under the glyph |
+| `dataObjectReference/@dataObjectRef` | skill | ID of the `<dataObject>`. Optional in the XSD; a reference without it points at nothing. |
+
+```xml
+<dataObject id="do_invoice" name="Invoice"/>
+<dataObjectReference id="dor_invoice" name="Invoice" dataObjectRef="do_invoice"/>
+```
+
+Both are flow elements but **not** flow nodes, so neither can appear in a lane's
+`<flowNodeRef>` — that property is typed `FlowNode`. The finish step exempts them from the
+one-node-one-lane rule for that reason.
+
+Rules the finish step (`../SKILL.md` §7) enforces:
+- a `dataObject` must not carry a `BPMNShape`
+- a `dataObjectReference` must resolve its `dataObjectRef`
+- every data association must have a `BPMNEdge`, or the link is invisible
+
+
 `ioSpecification` is optional and most engines do not require it. If used, it must be
 schema-complete, which means **both** `<inputSet>` and `<outputSet>` are mandatory — the common
 mistake of listing only `dataInput`/`dataOutput` is a validation error.
