@@ -261,6 +261,11 @@ Give the gateway a `default` flow so no token can get stuck when every condition
 <sequenceFlow id="flow_rejected" sourceRef="gw_approval" targetRef="end_rejected"/>
 ```
 
+Merge the same way you split. Two paths arriving at one activity with no gateway is legal, but it
+is *uncontrolled flow*: the activity is enabled once per arriving token, so a merge can run it more
+than once, and engines disagree on this. A merging gateway costs one element and states the intent.
+Converging on an end event needs no gateway.
+
 ### Timer — intermediate catch and interrupting boundary
 ```xml
 <intermediateCatchEvent id="wait_24h" name="Wait 24h">
@@ -610,8 +615,14 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
     if (el.$type === 'bpmn:DataObjectReference' && !el.dataObjectRef)
       errors.push(`${el.id}: dataObjectReference has no resolvable dataObjectRef`);
     for (const a of [...(el.dataInputAssociations || []), ...(el.dataOutputAssociations || [])])
-      if (!shaped.has(a.id))
+      if (!a.id)
+        errors.push(`data association on ${el.id} has no id, so it cannot be given a BPMNEdge`);
+      else if (!shaped.has(a.id))
         errors.push(`${a.id}: data association on ${el.id} has no BPMNEdge, so the link is invisible`);
+    if (/(?:Task|SubProcess|CallActivity)$/.test(el.$type) && (el.incoming || []).length > 1)
+      notes.push(`${el.id}: ${el.incoming.length} incoming flows and no merging gateway. ` +
+        'Uncontrolled flow enables an activity once per arriving token, so a merge can run it ' +
+        'more than once and engines disagree; a merging gateway states the intent explicitly');
     if (el.$type === 'bpmn:BoundaryEvent' && !el.attachedToRef)
       errors.push(`${el.id}: boundaryEvent has no attachedToRef`);
     if (el.ioSpecification && (!el.ioSpecification.inputSets?.length || !el.ioSpecification.outputSets?.length))
@@ -629,6 +640,14 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
           errors.push(`${f.id}: flow out of ${el.id} has no condition and is not its default`);
   });
 }
+const boxes = [...shapeBounds.values()];
+if (boxes.length) {
+  const wide = Math.max(...boxes.map(b => b.x + b.width)) - Math.min(...boxes.map(b => b.x));
+  if (wide > 3000) notes.push(`diagram is ${Math.round(wide)}px wide: fitted on a 1920px screen ` +
+    `its labels render near ${(12 * 1920 / wide).toFixed(1)}px, which is unreadable. ` +
+    'Shorten the longest path by moving stretches into sub-processes called with callActivity');
+}
+
 for (const a of Object.keys(rootElement.$attrs || {}))
   if (/^xmlns:(?!xsi$|dc$|di$|bpmndi$)/.test(a))
     notes.push(`${a} is a vendor namespace — valid and renders fine, but not portable`);
@@ -698,7 +717,8 @@ It fails the run on:
 - a `dataObjectReference` whose `dataObjectRef` does not resolve
 - a data association with no `BPMNEdge`, which leaves the link invisible
 
-A vendor namespace is reported as a note and does not fail the run.
+Reported as notes, which do not fail the run: a vendor namespace; an activity merging several
+flows without a gateway; a diagram too wide to read when fitted on screen.
 
 It cannot check whether the process is the *right* process. Still yours to judge:
 
@@ -714,6 +734,10 @@ It cannot check whether the process is the *right* process. Still yours to judge
 - 2-space indentation.
 - Process IDs kebab-case; flow IDs `flow_{source}_to_{target}`; gateway IDs `gw_{purpose}`.
 - All `sequenceFlow` elements grouped at the bottom of `<process>`, after the nodes.
+- Keep the longest path short. The diagram grows about 150px per node along it, and past roughly
+  3000px the labels are too small to read at a zoom that shows the whole thing. When a process runs
+  longer than that, offer to move stretches into sub-processes invoked by `callActivity`; §7 says so
+  when it happens.
 
 ## 10. References
 
