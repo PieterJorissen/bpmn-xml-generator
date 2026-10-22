@@ -20,7 +20,7 @@ Shell commands in this skill are **PowerShell**.
 
 ## 1. The procedure
 
-1. Gather what is missing (§2) — one question, then write.
+1. Gather what is missing (§2) — one `question` call, then write.
 2. Write the XML (§4, §5) and **save it to `{process-key}.bpmn`** in the working directory, or to
    the path the user gave.
 3. Run the finish step, both commands (§7). It adds the diagram and validates the file.
@@ -33,12 +33,12 @@ reply cannot be laid out or validated.
 
 ## 2. Gather information before writing
 
-**Never generate BPMN from an incomplete description.** Ask for every missing item below in a
-single response, then write.
+**Never generate BPMN from an incomplete description.** Ask for every missing item below in one
+`question` call, then write.
 
 Do not infer or invent any of it. An assignee, a gateway condition and a variable name are facts
 about the user's process, not defaults you can pick — a plausible guess is indistinguishable from
-a fact in the output. If it was not stated, it goes in the question.
+a fact in the output. If it was not stated, it goes in the call.
 
 Always required:
 
@@ -55,9 +55,21 @@ sub-processes, and the variable names used in conditions.
 For an ambiguous branch such as "approve or reject", confirm the gateway type, the condition on
 each outgoing flow, and where each path ends.
 
+**How to ask.** One `question` call, one entry per missing item, so the run blocks until it is
+answered instead of continuing on a guess. Build `options` from the user's own words — the steps
+they listed, the parties they named, the gateway types that fit — and set `multiple: true` where
+several apply. Pass `options: []` when their description offers nothing to choose from: the tool
+adds a "type your own answer" row itself, so an empty list is a free-text question and an "Other"
+option is never needed. Never offer an invented assignee, condition, key or timer value — a wrong
+default is harder to spot in a list than a blank one.
+
+Not every client registers the tool — the app, CLI and desktop do. Without it, ask every item as
+plain text in one reply and wait.
+
 **Lanes.** The responsible parties are already the lane list, so do not add a round trip. If they
-name two or more distinct parties, offer lanes in that same question — *"I can group these into
-lanes by responsible party (A, B, C); want that?"* — and say lanes are visual grouping only, so
+name two or more distinct parties, offer lanes as one more entry in that same call — *"I can
+group these into lanes by responsible party (A, B, C); want that?"* — and say lanes are visual
+grouping only, so
 assignment stays on the tasks either way. One party, or no answer: no lanes, and do not raise it.
 
 Lanes cover the whole diagram, not only the human steps. Every flow node needs one, so agree where
