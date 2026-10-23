@@ -63,7 +63,10 @@ ignored.
 ### Information gathering (skill behaviour)
 The skill must ask before writing whenever the process description is incomplete. Required:
 process key, name, happy-path steps, human tasks with assignees, service tasks with implementation
-type, and any gateway conditions. All missing items are asked in a single response.
+type, and any gateway conditions. All missing items go into a single `question` call, whose
+`options` are built from the user's own words — never from an invented assignee, condition or
+value; `options: []` makes an entry a free-text question. Not every client registers the tool (the
+app, CLI and desktop do), so the skill falls back to asking in plain text in one reply.
 
 ## Editing guidelines
 
