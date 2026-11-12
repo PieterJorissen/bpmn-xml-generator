@@ -102,10 +102,12 @@ senior analyst if not completed in time.
 
 | File | Purpose |
 |---|---|
-| `SKILL.md` | Authoring rules, element list, patterns, validation checklist |
+| `SKILL.md` | Authoring rules, element list, patterns, and how to run the finish command |
 | `references/elements.md` | Full attribute reference per element |
 | `references/examples.md` | Four complete, ready-to-upload BPMN examples |
 | `references/validation-errors.md` | `bpmn-moddle` and engine errors, with fixes |
+| `scripts/finish.ps1` | The finish command: sets up Node and `bpmn-auto-layout` on first use, then runs the validator |
+| `scripts/finish.mjs` | Adds the diagram layout and validates the file |
 
 ## Contributing
 
@@ -115,8 +117,8 @@ For bugs, include the prompt you used, the XML output, and the parse or engine e
 requests, name the BPMN pattern or element you need and give a concrete example.
 
 For pull requests: branch from `main`, change the files under
-`.opencode/skills/bpmn-xml-generator/`, and verify that any new XML snippet is valid BPMN 2.0
-(parseable by `bpmn-moddle`).
+`.opencode/skills/bpmn-xml-generator/`, and verify that any new XML snippet passes
+`scripts/finish.ps1`.
 
 ## License
 
