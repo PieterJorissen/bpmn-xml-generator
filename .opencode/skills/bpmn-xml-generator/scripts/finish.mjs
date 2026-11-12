@@ -96,7 +96,7 @@ if (procs.some(p => p.laneSets?.length)) {
 
 // --- data objects: bpmn-auto-layout gives the reference a shape but draws no association
 // edges, and gives the non-drawable <dataObject> a task-sized shape. Fix both. ---
-const DATA_W = 36, DATA_H = 50, DATA_GAP = 60;
+const DATA_W = 36, DATA_H = 50, DATA_GAP = 60, DATA_SLOT = 110;   // slot leaves room for the name
 for (const proc of procs) {
   const plane = doc.rootElement.diagrams?.[0]?.plane;
   if (!plane) continue;
@@ -124,12 +124,30 @@ for (const proc of procs) {
   const below = Math.max(...[...shape.entries()]
     .filter(([id]) => !bare.has(id) && !isData.has(id))
     .map(([, p]) => p.bounds.y + p.bounds.height));
-  refs.forEach((ref, i) => {
+  // Each reference wants to sit under the activities that use it. Several often want the same
+  // spot - documents from one task, or tasks stacked in one column - so references that would
+  // collide are merged into a group and spread side by side, centred on where they wanted to be.
+  const want = refs.map((ref, i) => {
     const links = assocOf(ref);
     const hosts = links.map(l => shape.get(l.host.id)?.bounds).filter(Boolean);
-    const cx = hosts.length
+    return { ref, links, cx: hosts.length
       ? hosts.reduce((a, b) => a + b.x + b.width / 2, 0) / hosts.length
-      : 100 + i * (DATA_W + 40);
+      : 100 + i * DATA_SLOT };
+  }).sort((a, b) => a.cx - b.cx);
+  const groups = [];
+  for (const w of want) {
+    groups.push({ items: [w], cx: w.cx });
+    for (let g, p; groups.length > 1 && (g = groups.at(-1), p = groups.at(-2),
+         p.cx + p.items.length * DATA_SLOT / 2 > g.cx - g.items.length * DATA_SLOT / 2);) {
+      groups.pop();
+      p.cx = (p.cx * p.items.length + g.cx * g.items.length) / (p.items.length + g.items.length);
+      p.items.push(...g.items);
+    }
+  }
+  for (const g of groups)
+    g.items.forEach((w, k) => { w.cx = g.cx + (k - (g.items.length - 1) / 2) * DATA_SLOT; });
+
+  for (const { ref, links, cx } of want) {
     const rs = shape.get(ref.id) || plane.planeElement[plane.planeElement.push(
       moddle.create('bpmndi:BPMNShape', { id: `${ref.id}_di`, bpmnElement: ref,
         bounds: moddle.create('dc:Bounds', { x: 0, y: 0, width: DATA_W, height: DATA_H }) })) - 1];
@@ -142,7 +160,7 @@ for (const proc of procs) {
       plane.planeElement.push(moddle.create('bpmndi:BPMNEdge', {
         id: `${assoc.id}_di`, bpmnElement: assoc, waypoint: out ? [a, b] : [b, a] }));
     }
-  });
+  }
 }
 if (touched) {
   xml = (await moddle.toXML(doc.rootElement, { format: true })).xml;
@@ -213,7 +231,8 @@ for (const proc of rootElement.rootElements.filter(e => e.$type === 'bpmn:Proces
       const a = box.get(ids[i]), b = box.get(ids[j]);
       if (a.x < b.x + b.width && b.x < a.x + a.width &&
           a.y < b.y + b.height && b.y < a.y + a.height)
-        errors.push(`${ids[i]} and ${ids[j]} overlap at (${a.x},${a.y})/(${b.x},${b.y}) - one hides the other`);
+        errors.push(`${ids[i]} and ${ids[j]} overlap at (${a.x},${a.y})/(${b.x},${b.y}) - one hides the other. ` +
+          'This is a defect in the layout step, not in the model: leave the process as it is and report it');
     }
 
   walk(proc, el => {

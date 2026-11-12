@@ -211,7 +211,8 @@ shapes, growing each lane to fit the rows it needs.
 A `<dataObject>` is the data itself and is **never drawn**; a `<dataObjectReference>` points at it
 and is what appears on the canvas. Declare both, then link the reference to an activity with
 `<dataOutputAssociation>` (the activity produces it) or `<dataInputAssociation>` (it consumes it).
-One `dataObject` may have several references.
+One `dataObject` may have several references, and an activity may carry any number of
+associations.
 
 `<targetRef>` is mandatory on both association types. An input association reads from the
 reference, so the reference id goes in `<sourceRef>` and a `<property>` on the activity receives
@@ -369,13 +370,20 @@ The first run needs network access.
 
 On success it prints `OK <file> — layout applied, N elements rendered, no findings`.
 
-**A file that has not printed `OK` is not finished.** Fix the findings it lists and run the command
-again. Lines beginning `note:` are advisory and do not fail the run. If it throws for any other
-reason, stop and tell the user what is missing — never hand over the file anyway, and never
+**A file that has not printed `OK` is not finished.** Fix the findings it lists and run the
+command again. Lines beginning `note:` are advisory and do not fail the run. If it throws for any
+other reason, stop and tell the user what is missing — never hand over the file anyway, and never
 hand-write the diagram section.
 
-Two things to know about the output:
+Fix a finding by correcting the XML it names, never by changing what the process says. Do not
+drop, merge or move something the user asked for to get a run to pass. If a finding cannot be
+fixed without that, stop and report it — an `overlap` finding in particular is the layout step's
+defect, not the model's.
 
+Three things to know about the output:
+
+- The diagram is rebuilt from scratch on every run. Never edit `<bpmndi:...>` coordinates, and
+  never delete the section before a re-run — the edit is discarded and the deletion is redundant.
 - It re-serialises the file, normalising attribute order and child element order, and rewriting
   `<formalExpression>` as `<expression xsi:type="tFormalExpression">`. Both are valid; do not
   undo it.
