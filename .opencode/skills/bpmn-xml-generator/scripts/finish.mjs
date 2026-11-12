@@ -17,6 +17,22 @@ let doc = await moddle.fromXML(xml);
 const procs = doc.rootElement.rootElements.filter(e => e.$type === 'bpmn:Process');
 let touched = false;   // any DI we add must be re-serialised before the file is written
 
+// --- data objects: a reference is drawn with the activity that produces it or, when nothing in
+// this process does, the first one that reads it. It sits under that activity: in a strip at the
+// bottom of the activity's lane, or below the whole diagram when there are no lanes. ---
+const DATA_W = 36, DATA_H = 50, DATA_GAP = 60;
+const DATA_SLOT = 110, DATA_STRIP = 100;   // room for a reference and its name, across and down
+const dataRefs = proc =>
+  (proc.flowElements || []).filter(e => e.$type === 'bpmn:DataObjectReference');
+const dataLinks = (proc, ref) => (proc.flowElements || []).flatMap(a => [
+  ...(a.dataOutputAssociations || []).filter(x => x.targetRef?.id === ref.id)
+     .map(x => ({ assoc: x, host: a, out: true })),
+  ...(a.dataInputAssociations || []).filter(x => (x.sourceRef || []).some(r => r.id === ref.id))
+     .map(x => ({ assoc: x, host: a, out: false }))]);
+const dataAnchor = (proc, ref) => {
+  const links = dataLinks(proc, ref);
+  return (links.find(l => l.out) || links[0])?.host;
+};
 
 // --- lane pass: bpmn-auto-layout ignores lanes, so band the nodes and draw the lanes here ---
 if (procs.some(p => p.laneSets?.length)) {
@@ -57,15 +73,18 @@ if (procs.some(p => p.laneSets?.length)) {
       }
       rowsIn[i] = Math.max(1, bands.length);
     });
-    const height = rowsIn.map(r => Math.max(MIN_BAND, r * ROW));
+    const anchors = new Set(dataRefs(proc).map(r => dataAnchor(proc, r)?.id));
+    const docs = lanes.map(
+      l => (l.flowNodeRef || []).some(n => anchors.has(n.id)) ? DATA_STRIP : 0);
+    const height = rowsIn.map((r, i) => Math.max(MIN_BAND, r * ROW) + docs[i]);
     const top = height.reduce((acc, h, i) => (acc.push((acc[i] ?? PAD)), acc), [PAD])
                       .map((_, i) => PAD + height.slice(0, i).reduce((a, b) => a + b, 0));
 
     for (const [id, i] of laneOf) {
       if (isBoundary.has(id)) continue;
       const s = shape.get(id); if (!s) continue;
-      const strip = height[i] / rowsIn[i], r = rowOf.get(id) || 0;
-      s.bounds.y = top[i] + r * strip + (strip - s.bounds.height) / 2;
+      const row = (height[i] - docs[i]) / rowsIn[i], r = rowOf.get(id) || 0;
+      s.bounds.y = top[i] + r * row + (row - s.bounds.height) / 2;
     }
     // boundary events are not free-standing: they ride on their host's border
     for (const b of boundary) {
@@ -84,7 +103,7 @@ if (procs.some(p => p.laneSets?.length)) {
       e.waypoint = ay === by ? [pt(ax, ay), pt(bx, by)]
                              : [pt(ax, ay), pt(mx, ay), pt(mx, by), pt(bx, by)];
     }
-    const boxes = [...shape.values()].map(s => s.bounds);
+    const boxes = [...laneOf.keys()].map(id => shape.get(id)?.bounds).filter(Boolean);
     const minX = Math.min(...boxes.map(b => b.x)) - PAD;
     const maxX = Math.max(...boxes.map(b => b.x + b.width)) + PAD;
     lanes.forEach((l, i) => plane.planeElement.push(moddle.create('bpmndi:BPMNShape', {
@@ -94,50 +113,43 @@ if (procs.some(p => p.laneSets?.length)) {
   }
 }
 
-// --- data objects: bpmn-auto-layout gives the reference a shape but draws no association
-// edges, and gives the non-drawable <dataObject> a task-sized shape. Fix both. ---
-const DATA_W = 36, DATA_H = 50, DATA_GAP = 60, DATA_SLOT = 110;   // slot leaves room for the name
+// --- data pass: bpmn-auto-layout gives a reference a shape but draws no association edges,
+// and gives the non-drawable <dataObject> a task-sized shape. Fix both. ---
 for (const proc of procs) {
   const plane = doc.rootElement.diagrams?.[0]?.plane;
-  if (!plane) continue;
-  const els = proc.flowElements || [];
-  const refs = els.filter(e => e.$type === 'bpmn:DataObjectReference');
-  if (!refs.length) continue;
+  const refs = dataRefs(proc);
+  if (!plane || !refs.length) continue;
   touched = true;
+
+  // a <dataObject> is not drawable; drop the shape the layouter invented for it
+  const bare = new Set(
+    (proc.flowElements || []).filter(e => e.$type === 'bpmn:DataObject').map(e => e.id));
+  plane.planeElement = plane.planeElement.filter(
+    pe => !(pe.$type === 'bpmndi:BPMNShape' && bare.has(pe.bpmnElement.id)));
   const shape = new Map();
   for (const pe of plane.planeElement)
     if (pe.$type === 'bpmndi:BPMNShape') shape.set(pe.bpmnElement.id, pe);
 
-  // a <dataObject> is not drawable; drop the shape the layouter invented for it
-  const bare = new Set(els.filter(e => e.$type === 'bpmn:DataObject').map(e => e.id));
-  plane.planeElement = plane.planeElement.filter(
-    pe => !(pe.$type === 'bpmndi:BPMNShape' && bare.has(pe.bpmnElement.id)));
-
-  const assocOf = ref => els.flatMap(a => [
-    ...(a.dataOutputAssociations || []).filter(x => x.targetRef?.id === ref.id)
-       .map(x => ({ assoc: x, host: a, out: true })),
-    ...(a.dataInputAssociations || []).filter(x => (x.sourceRef || []).some(r => r.id === ref.id))
-       .map(x => ({ assoc: x, host: a, out: false }))]);
-
-  // measure after the bogus shapes are gone, and ignore the data objects themselves
+  const lanes = proc.laneSets?.[0]?.lanes || [];
   const isData = new Set(refs.map(r => r.id));
   const below = Math.max(...[...shape.entries()]
-    .filter(([id]) => !bare.has(id) && !isData.has(id))
-    .map(([, p]) => p.bounds.y + p.bounds.height));
-  // Each reference wants to sit under the activities that use it. Several often want the same
-  // spot - documents from one task, or tasks stacked in one column - so references that would
-  // collide are merged into a group and spread side by side, centred on where they wanted to be.
+    .filter(([id]) => !isData.has(id)).map(([, p]) => p.bounds.y + p.bounds.height));
   const want = refs.map((ref, i) => {
-    const links = assocOf(ref);
-    const hosts = links.map(l => shape.get(l.host.id)?.bounds).filter(Boolean);
-    return { ref, links, cx: hosts.length
-      ? hosts.reduce((a, b) => a + b.x + b.width / 2, 0) / hosts.length
-      : 100 + i * DATA_SLOT };
-  }).sort((a, b) => a.cx - b.cx);
+    const anchor = dataAnchor(proc, ref), h = shape.get(anchor?.id)?.bounds;
+    const lane = h && shape.get(
+      lanes.find(l => (l.flowNodeRef || []).some(n => n.id === anchor.id))?.id)?.bounds;
+    return { ref, lane, links: dataLinks(proc, ref),
+      cx: h ? h.x + h.width / 2 : 100 + i * DATA_SLOT,
+      y: lane ? lane.y + lane.height - DATA_STRIP + 10 : below + DATA_GAP };
+  }).sort((a, b) => a.y - b.y || a.cx - b.cx);
+
+  // Several references often want the same spot - documents from one task, or tasks stacked in
+  // one column. Those that would collide are merged into a group and spread side by side,
+  // centred on where they wanted to be.
   const groups = [];
   for (const w of want) {
-    groups.push({ items: [w], cx: w.cx });
-    for (let g, p; groups.length > 1 && (g = groups.at(-1), p = groups.at(-2),
+    groups.push({ items: [w], y: w.y, cx: w.cx });
+    for (let g, p; groups.length > 1 && (g = groups.at(-1), p = groups.at(-2), p.y === g.y &&
          p.cx + p.items.length * DATA_SLOT / 2 > g.cx - g.items.length * DATA_SLOT / 2);) {
       groups.pop();
       p.cx = (p.cx * p.items.length + g.cx * g.items.length) / (p.items.length + g.items.length);
@@ -147,19 +159,33 @@ for (const proc of procs) {
   for (const g of groups)
     g.items.forEach((w, k) => { w.cx = g.cx + (k - (g.items.length - 1) / 2) * DATA_SLOT; });
 
-  for (const { ref, links, cx } of want) {
+  const pt = (x, y) => moddle.create('dc:Point', { x: Math.round(x), y: Math.round(y) });
+  for (const { ref, links, cx, y } of want) {
     const rs = shape.get(ref.id) || plane.planeElement[plane.planeElement.push(
       moddle.create('bpmndi:BPMNShape', { id: `${ref.id}_di`, bpmnElement: ref,
         bounds: moddle.create('dc:Bounds', { x: 0, y: 0, width: DATA_W, height: DATA_H }) })) - 1];
-    Object.assign(rs.bounds, { x: Math.round(cx - DATA_W / 2), y: Math.round(below + DATA_GAP),
-                               width: DATA_W, height: DATA_H });
+    const r = Object.assign(rs.bounds, { x: Math.round(cx - DATA_W / 2), y: Math.round(y),
+                                         width: DATA_W, height: DATA_H });
     for (const { assoc, host, out } of links) {
       const h = shape.get(host.id)?.bounds; if (!h) continue;
-      const pt = (x, y) => moddle.create('dc:Point', { x: Math.round(x), y: Math.round(y) });
-      const a = pt(h.x + h.width / 2, h.y + h.height), b = pt(rs.bounds.x + DATA_W / 2, rs.bounds.y);
+      // an activity above the reference meets its top; one in a lane below meets its side,
+      // because the name is written under the reference
+      const above = h.y + h.height <= r.y, hx = h.x + h.width / 2;
+      const a = pt(hx, above ? h.y + h.height : h.y);
+      const b = above ? pt(r.x + DATA_W / 2, r.y)
+                      : pt(hx < r.x + DATA_W / 2 ? r.x : r.x + DATA_W, r.y + DATA_H / 2);
       plane.planeElement.push(moddle.create('bpmndi:BPMNEdge', {
         id: `${assoc.id}_di`, bpmnElement: assoc, waypoint: out ? [a, b] : [b, a] }));
     }
+  }
+
+  // lanes span the whole diagram, the references in them included
+  const bands = lanes.map(l => shape.get(l.id)?.bounds).filter(Boolean);
+  const held = want.filter(w => w.lane);
+  if (bands.length && held.length) {
+    const left = Math.min(bands[0].x, ...held.map(w => w.cx - DATA_SLOT));
+    const right = Math.max(bands[0].x + bands[0].width, ...held.map(w => w.cx + DATA_SLOT / 2));
+    for (const b of bands) Object.assign(b, { x: Math.round(left), width: Math.round(right - left) });
   }
 }
 if (touched) {

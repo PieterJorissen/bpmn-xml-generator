@@ -245,8 +245,8 @@ it; an output association writes to the reference, so the reference id is the `<
 ```
 
 Data elements are not flow nodes, so they are never listed in a lane's `<flowNodeRef>`. The finish
-step (§7) places the reference below the diagram, under the activities that use it, and draws each
-association as an edge; `bpmn-auto-layout` draws neither.
+step (§7) draws each reference under the activity that produces it — inside that activity's lane
+when there are lanes — and each association as an edge; `bpmn-auto-layout` draws neither.
 
 ### serviceTask
 A plain `serviceTask`. How the engine dispatches it is engine configuration, not BPMN.
