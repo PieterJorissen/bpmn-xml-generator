@@ -32,13 +32,17 @@ if ($Global) {
 
 Write-Host "Installing $Skill to $Dest"
 
-New-Item -ItemType Directory -Force -Path (Join-Path $Dest 'references') | Out-Null
+foreach ($Dir in 'references', 'scripts') {
+    New-Item -ItemType Directory -Force -Path (Join-Path $Dest $Dir) | Out-Null
+}
 
 $Files = @(
     'SKILL.md'
     'references/elements.md'
     'references/examples.md'
     'references/validation-errors.md'
+    'scripts/finish.ps1'
+    'scripts/finish.mjs'
 )
 
 foreach ($File in $Files) {

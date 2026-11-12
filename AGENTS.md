@@ -5,8 +5,8 @@ Guidance for agents working in this repository.
 ## What this repository is
 
 An **opencode skill** for generating valid BPMN 2.0 XML compatible with BPMN 2.0-compliant process
-engines. It has no build system, test runner, or application code — it is documentation and skill
-configuration only.
+engines. It has no build system or test runner — it is documentation, skill configuration, and
+the two scripts that lay out and validate the output.
 
 The skill lives at `.opencode/skills/bpmn-xml-generator/`, one of the directories opencode scans
 for skills, and is invoked automatically when a user asks to create, model, or convert a business
@@ -24,6 +24,9 @@ Shell commands in this repository, including those the skill tells the agent to 
     elements.md                   # Full attribute reference for every supported element
     examples.md                   # 4 complete valid BPMN examples
     validation-errors.md          # bpmn-moddle parse errors and fixes
+  scripts/
+    finish.ps1                    # The finish command: sets up the runner, runs finish.mjs
+    finish.mjs                    # Layout (lanes, data objects) and every validation check
 install.ps1                       # PowerShell installer
 ```
 
@@ -72,6 +75,12 @@ app, CLI and desktop do), so the skill falls back to asking in plain text in one
 
 - `SKILL.md` is the source of truth for skill behaviour. All rules, patterns, and constraints live
   there. Keep it lean — content that does not change the output does not belong in it.
+- Anything the agent would have to copy out verbatim belongs in `scripts/`, not in `SKILL.md`:
+  text in `SKILL.md` is paid for on every load, and again as output if the agent must retype it.
+  The agent runs the scripts by path and never reads them.
+- `scripts/finish.mjs` is the validator. A change there is verified by running `finish.ps1` over
+  every example plus a file that should fail; `finish.ps1` stays ASCII and is invoked as a script
+  block (see `SKILL.md` §7), so it must not rely on `$PSScriptRoot`.
 - `elements.md` is reference-only — update it when supported engine extensions change.
 - `examples.md` examples must stay schema-valid and importable into bpmn-js with no warnings, and
   each must carry its own `<bpmndi:BPMNDiagram>`. Verify any change by extracting the XML from the
