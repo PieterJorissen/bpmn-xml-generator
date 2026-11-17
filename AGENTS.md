@@ -27,6 +27,7 @@ Shell commands in this repository, including those the skill tells the agent to 
   scripts/
     finish.ps1                    # The finish command: sets up the runner, runs finish.mjs
     finish.mjs                    # Layout (lanes, data objects) and every validation check
+data-process-preview.html         # Browser page showing spreadsheet values on a diagram
 install.ps1                       # PowerShell installer
 ```
 

@@ -108,6 +108,7 @@ senior analyst if not completed in time.
 | `references/validation-errors.md` | `bpmn-moddle` and engine errors, with fixes |
 | `scripts/finish.ps1` | The finish command: sets up Node and `bpmn-auto-layout` on first use, then runs the validator |
 | `scripts/finish.mjs` | Adds the diagram layout and validates the file |
+| `data-process-preview.html` | Opens a spreadsheet next to one or two `.bpmn` files and shows row values on the diagram. Installed to the current directory; open it in a browser |
 
 ## Contributing
 
