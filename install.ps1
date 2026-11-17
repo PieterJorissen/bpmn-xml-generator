@@ -5,6 +5,7 @@
 .DESCRIPTION
   Downloads the skill into .opencode/skills/bpmn-xml-generator/ in the current
   directory, or into the opencode global config directory with -Global.
+  data-process-preview.html always goes to the current directory.
 
 .EXAMPLE
   irm https://raw.githubusercontent.com/PieterJorissen/bpmn-xml-generator/main/install.ps1 | iex
@@ -21,7 +22,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $Skill   = 'bpmn-xml-generator'
-$BaseUrl = "https://raw.githubusercontent.com/PieterJorissen/$Skill/$Branch/.opencode/skills/$Skill"
+$RepoUrl = "https://raw.githubusercontent.com/PieterJorissen/$Skill/$Branch"
+$BaseUrl = "$RepoUrl/.opencode/skills/$Skill"
 
 if ($Global) {
     $ConfigRoot = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $HOME '.config' }
@@ -49,5 +51,9 @@ foreach ($File in $Files) {
     Invoke-WebRequest -Uri "$BaseUrl/$File" -OutFile (Join-Path $Dest $File) -UseBasicParsing
     Write-Host "  [ok] $File"
 }
+
+$Preview = 'data-process-preview.html'
+Invoke-WebRequest -Uri "$RepoUrl/$Preview" -OutFile (Join-Path (Get-Location) $Preview) -UseBasicParsing
+Write-Host "  [ok] $Preview -> $(Get-Location)"
 
 Write-Host "`nDone. Restart opencode (or start a new session) to activate the skill."
