@@ -69,7 +69,7 @@
   color-scheme: dark;
 }
 
-/* bpmn-js 18.31.1 viewer styles: the rules from dist/assets/diagram-js.css and bpmn-js.css that a navigated viewer uses */
+/* bpmn-js 18.33.0 viewer styles: the rules from dist/assets/diagram-js.css and bpmn-js.css that a navigated viewer uses */
 .bio-theme-parent {
   --bio-surface: hsl(0, 0%, 100%);
   --bio-surface-subtle: hsl(225, 10%, 97%);
@@ -442,13 +442,13 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/bpmn-navigated-viewer.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.33.0/dist/bpmn-navigated-viewer.production.min.js"></script>
 <script>
 (() => {
   'use strict';
 
   /* ---------- Settings ---------- */
-  const XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   const ROW_H = 34;            // px height of one row in the list
   const TAG_FONT = 12;         // px font size of a tag at 100% zoom
   const TAG_MIN_SCALE = 0.6;   // tags stop shrinking below this zoom level
