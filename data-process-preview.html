@@ -311,6 +311,22 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 .toast.is-error { background: #6b1520; color: #ffffff; }
 .toast.is-error button { color: #ffd2d6; }
 
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { border-color: var(--accent); filter: brightness(1.06); }
+.btn:disabled { opacity: .5; cursor: default; filter: none; }
+.pop { position: fixed; z-index: 1500; display: flex; flex-direction: column; gap: 12px; width: min(352px, calc(100vw - 24px)); padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 14px 40px rgba(0, 0, 0, .22); }
+.pop h3 { margin: 0; font: 600 17px/1.2 var(--font-display); }
+.pop-note { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.pop fieldset { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.pop legend { margin-bottom: 6px; padding: 0; color: var(--muted); font-size: 11.5px; }
+.pop label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; }
+.pop label.is-disabled { opacity: .5; cursor: default; }
+.pop input[type="radio"] { flex: none; margin: 2px 0 0; accent-color: var(--accent); }
+.pop code { font-family: var(--font-mono); font-size: 12px; }
+.pop-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.tag.is-rebind { outline: 2px dashed var(--paper-accent); outline-offset: 3px; }
+.annot-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; width: max-content; max-width: 264px; padding: 5px 7px; font: 12px/1.2 Arial, Helvetica, sans-serif; white-space: pre-wrap; overflow-wrap: break-word; pointer-events: none; }
+
 @media (max-width: 820px) {
   .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 50%) minmax(0, 1fr); }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -397,6 +413,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-warn" hidden></span></div>
         <div class="board-tools">
           <button type="button" class="btn btn-small" data-act="open" title="Open a .bpmn file in diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg><span class="btn-label">Open .bpmn…</span></button>
+          <button type="button" class="icon-btn" data-act="download" aria-haspopup="dialog" title="Download diagram A with its Excel fields as BPMN annotations" aria-label="Download diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg></button>
           <span class="tool-sep"></span>
           <button type="button" class="icon-btn" data-act="zoom-out" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 12h13"/></svg></button>
           <span class="zoom-val" aria-live="off">100%</span>
@@ -405,7 +422,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
           <button type="button" class="icon-btn" data-act="clear" title="Remove all tags from this diagram" aria-label="Remove all tags from diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/></svg></button>
           <button type="button" class="icon-btn" data-act="max" aria-pressed="false" title="Give diagram A the full area" aria-label="Maximise diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5h5.5V10M10 19.5H4.5V14M19.5 4.5 13.5 10.5M4.5 19.5l6-6"/></svg></button>
         </div>
-        <input type="file" id="file-bpmn-a" accept=".bpmn,.bpmn2,.xml" hidden>
+        <input type="file" id="file-bpmn-a" accept=".bpmn,.bpmn2,.xml,.zip" hidden>
       </header>
       <div class="canvas-host" id="host-a">
         <div class="board-empty">Open a .bpmn file, or drop one here.</div>
@@ -421,6 +438,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-warn" hidden></span></div>
         <div class="board-tools">
           <button type="button" class="btn btn-small" data-act="open" title="Open a .bpmn file in diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg><span class="btn-label">Open .bpmn…</span></button>
+          <button type="button" class="icon-btn" data-act="download" aria-haspopup="dialog" title="Download diagram B with its Excel fields as BPMN annotations" aria-label="Download diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg></button>
           <span class="tool-sep"></span>
           <button type="button" class="icon-btn" data-act="zoom-out" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 12h13"/></svg></button>
           <span class="zoom-val" aria-live="off">100%</span>
@@ -429,7 +447,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
           <button type="button" class="icon-btn" data-act="clear" title="Remove all tags from this diagram" aria-label="Remove all tags from diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/></svg></button>
           <button type="button" class="icon-btn" data-act="max" aria-pressed="false" title="Give diagram B the full area" aria-label="Maximise diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5h5.5V10M10 19.5H4.5V14M19.5 4.5 13.5 10.5M4.5 19.5l6-6"/></svg></button>
         </div>
-        <input type="file" id="file-bpmn-b" accept=".bpmn,.bpmn2,.xml" hidden>
+        <input type="file" id="file-bpmn-b" accept=".bpmn,.bpmn2,.xml,.zip" hidden>
       </header>
       <div class="canvas-host" id="host-b">
         <div class="board-empty">Open a .bpmn file, or drop one here.</div>
@@ -440,6 +458,17 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     <div class="armhint" id="armhint" role="status" hidden></div>
   </main>
 </div>
+<div class="pop" id="dl-pop" role="dialog" aria-labelledby="dl-title" hidden>
+  <h3 id="dl-title">Download diagram</h3>
+  <p class="pop-note" id="dl-note"></p>
+  <fieldset id="dl-modes">
+    <legend>Annotation text</legend>
+    <label for="dl-mode-col"><input type="radio" name="dl-mode" id="dl-mode-col" value="column" checked><span>Column names, like <code>{Customer}</code></span></label>
+    <label for="dl-mode-val" id="dl-val-label"><input type="radio" name="dl-mode" id="dl-mode-val" value="values"><span id="dl-val-text">Values of the selected rows</span></label>
+  </fieldset>
+  <p class="pop-note" id="dl-where"></p>
+  <div class="pop-actions"><button type="button" class="btn" id="dl-copy">Copy XML</button><button type="button" class="btn btn-primary" id="dl-go">Download .bpmn</button></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.33.0/dist/bpmn-navigated-viewer.production.min.js"></script>
@@ -449,6 +478,15 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 
   /* ---------- Settings ---------- */
   const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+  const FFLATE_SRC = 'https://cdn.jsdelivr.net/npm/fflate@0.8.3/umd/index.js';
+  /* Placed fields are saved as standard BPMN text annotations; a dpp:dataField extension marks them as Excel fields. */
+  const NS = {
+    bpmn: 'http://www.omg.org/spec/BPMN/20100524/MODEL',
+    bpmndi: 'http://www.omg.org/spec/BPMN/20100524/DI',
+    dc: 'http://www.omg.org/spec/DD/20100524/DC',
+    di: 'http://www.omg.org/spec/DD/20100524/DI',
+    dpp: 'urn:data-process-preview:1.0'
+  };
   const ROW_H = 34;            // px height of one row in the list
   const TAG_FONT = 12;         // px font size of a tag at 100% zoom
   const TAG_MIN_SCALE = 0.6;   // tags stop shrinking below this zoom level
@@ -608,6 +646,18 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     return xlsxReady;
   }
 
+  let fflateReady = null;
+  function ensureFflate() {
+    if (window.fflate) return Promise.resolve();
+    if (!fflateReady) fflateReady = loadScript(FFLATE_SRC).catch((err) => { fflateReady = null; throw err; });
+    return fflateReady;
+  }
+  function hashString(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(36) + '.' + str.length.toString(36);
+  }
+
   /* ---------- State ---------- */
   const data = {
     fileName: '', wb: null,
@@ -657,6 +707,19 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   /* ---------- Spreadsheet ---------- */
   function isSheetFile(f) { return /\.(xlsx|xlsm|xlsb|xls|ods|csv|tsv|txt)$/i.test(f.name); }
   function isBpmnFile(f) { return /\.(bpmn|bpmn2|xml)$/i.test(f.name); }
+  function isZipFile(f) { return /\.zip$/i.test(f.name); }
+  async function bpmnEntriesFromZip(file) {
+    try {
+      await ensureFflate();
+      const files = window.fflate.unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: (f) => /\.(bpmn|bpmn2|xml)$/i.test(f.name) && !/(^|\/)(__MACOSX|\.)/.test(f.name) });
+      const out = Object.keys(files).map((n) => ({ name: n.split('/').pop(), text: window.fflate.strFromU8(files[n]) }));
+      if (!out.length) toast('There is no .bpmn file inside ' + file.name + '.', { error: true });
+      return out;
+    } catch (_) {
+      toast(file.name + ' could not be opened as a zip file.', { error: true });
+      return [];
+    }
+  }
 
   async function readTextFile(file) {
     const buf = await file.arrayBuffer();
@@ -983,6 +1046,238 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     if (f) openExcelFile(f);
   });
 
+  /* ---------- Excel fields inside BPMN files ----------
+     A field is saved as <bpmn:textAnnotation> with <bpmn:extensionElements><dpp:dataField column="…"/>, an optional
+     <bpmn:association> to the element it belongs to, and layout (BPMNShape/BPMNEdge). Other BPMN tools show a normal
+     annotation. When a file is opened here these annotations become fields again; an annotation whose whole text is
+     {Column} (for example typed in another modeler) is recognised as well. */
+  function removeNode(n) {
+    if (!n || !n.parentNode) return;
+    const prev = n.previousSibling;
+    if (prev && prev.nodeType === 3 && /^\s*$/.test(prev.nodeValue)) prev.remove();
+    n.remove();
+  }
+
+  function extractDataFields(xml) {
+    let doc;
+    try { doc = new DOMParser().parseFromString(xml, 'application/xml'); } catch (_) { return { xml, fields: [] }; }
+    if (doc.getElementsByTagName('parsererror').length) return { xml, fields: [] };
+    const anns = Array.from(doc.getElementsByTagNameNS(NS.bpmn, 'textAnnotation'));
+    if (!anns.length) return { xml, fields: [] };
+    const di = new Map();
+    for (const local of ['BPMNShape', 'BPMNEdge']) for (const e of doc.getElementsByTagNameNS(NS.bpmndi, local)) di.set(e.getAttribute('bpmnElement'), e);
+    const assocs = Array.from(doc.getElementsByTagNameNS(NS.bpmn, 'association'));
+    const num = (v) => (v != null && v !== '' && isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+    const fields = [];
+    for (const a of anns) {
+      const id = a.getAttribute('id');
+      const ext = a.getElementsByTagNameNS(NS.dpp, 'dataField')[0] || null;
+      const textEl = Array.from(a.children).find((c) => c.localName === 'text' && c.namespaceURI === NS.bpmn);
+      let column = ext ? ext.getAttribute('column') : null;
+      if (!column) {
+        const m = (textEl ? textEl.textContent : '').trim().match(/^\{\{?\s*([^{}\r\n]+?)\s*\}\}?$/);
+        column = m ? m[1] : null;
+      }
+      if (!column) continue;
+      const shape = di.get(id);
+      const b = shape ? shape.getElementsByTagNameNS(NS.dc, 'Bounds')[0] : null;
+      const bounds = b ? { x: Number(b.getAttribute('x')), y: Number(b.getAttribute('y')), w: Number(b.getAttribute('width')), h: Number(b.getAttribute('height')) } : null;
+      const linked = assocs.filter((x) => x.getAttribute('sourceRef') === id || x.getAttribute('targetRef') === id);
+      let element = ext ? ext.getAttribute('element') : null;
+      if (!element && linked.length) element = linked[0].getAttribute('sourceRef') === id ? linked[0].getAttribute('targetRef') : linked[0].getAttribute('sourceRef');
+      fields.push({
+        id, column, element: element || null,
+        bounds: bounds && [bounds.x, bounds.y, bounds.w, bounds.h].every((v) => isFinite(v)) ? bounds : null,
+        plane: shape && shape.parentNode && shape.parentNode.getAttribute ? shape.parentNode.getAttribute('bpmnElement') : null,
+        anchor: ext ? ext.getAttribute('anchor') : null,
+        w: ext ? num(ext.getAttribute('width')) : null,
+        h: ext ? num(ext.getAttribute('height')) : null
+      });
+      for (const x of linked) { removeNode(di.get(x.getAttribute('id'))); removeNode(x); }
+      removeNode(shape);
+      removeNode(a);
+    }
+    if (!fields.length) return { xml, fields };
+    return { xml: new XMLSerializer().serializeToString(doc), fields };
+  }
+
+  function ensurePrefix(root, ns, preferred) {
+    if (root.namespaceURI === ns && !root.prefix) return '';
+    const found = root.lookupPrefix(ns);
+    if (found) return found;
+    if (root.isDefaultNamespace(ns)) return '';
+    let prefix = preferred, k = 1;
+    while (root.lookupNamespaceURI(prefix)) prefix = preferred + (++k);
+    root.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:' + prefix, ns);
+    return prefix;
+  }
+
+  const lastLine = (n) => (n && n.nodeType === 3 && /^\s+$/.test(n.nodeValue) && n.nodeValue.includes('\n') ? n.nodeValue.slice(n.nodeValue.lastIndexOf('\n') + 1) : null);
+  function indentTree(doc, node, indent, step) {
+    const kids = Array.from(node.childNodes).filter((c) => c.nodeType === 1);
+    if (!kids.length) return;
+    for (const k of kids) {
+      node.insertBefore(doc.createTextNode('\n' + indent + step), k);
+      indentTree(doc, k, indent + step, step);
+    }
+    node.appendChild(doc.createTextNode('\n' + indent));
+  }
+  /* Insert an element with the indentation its siblings use, so the saved file stays readable and diff-friendly. */
+  function placeNode(doc, parent, node, before) {
+    const own = lastLine(parent.previousSibling) || '';
+    let ind = null;
+    for (const c of parent.childNodes) if (c.nodeType === 1) { ind = lastLine(c.previousSibling); break; }
+    if (ind == null) ind = own + '  ';
+    indentTree(doc, node, ind, ind.length > own.length ? ind.slice(own.length) : '  ');
+    if (before) {
+      parent.insertBefore(node, before);
+      parent.insertBefore(doc.createTextNode('\n' + ind), before);
+      return;
+    }
+    const last = parent.lastChild;
+    if (last && last.nodeType === 3 && /^\s+$/.test(last.nodeValue)) {
+      parent.insertBefore(doc.createTextNode('\n' + ind), last);
+      parent.insertBefore(node, last);
+    } else {
+      parent.appendChild(doc.createTextNode('\n' + ind));
+      parent.appendChild(node);
+      parent.appendChild(doc.createTextNode('\n' + own));
+    }
+  }
+
+  /* BPMN 2.0 schema order: artifacts come after flow elements and before these. */
+  const ARTIFACTS_BEFORE = {
+    collaboration: ['conversationNode', 'conversation', 'subConversation', 'callConversation', 'conversationAssociation', 'participantAssociation', 'messageFlowAssociation', 'correlationKey', 'choreographyRef', 'conversationLink'],
+    process: ['resourceRole', 'performer', 'humanPerformer', 'potentialOwner', 'correlationSubscription', 'supports']
+  };
+  function artifactSlot(container) {
+    const stop = ARTIFACTS_BEFORE[container.localName] || [];
+    return Array.from(container.children).find((c) => stop.includes(c.localName)) || null;
+  }
+  const CONTAINERS = ['process', 'subProcess', 'adHocSubProcess', 'transaction', 'collaboration'];
+  const isBpmnEl = (e, names) => !!e && e.nodeType === 1 && e.namespaceURI === NS.bpmn && names.includes(e.localName);
+  /* The annotation lives next to the element it describes: in its process or sub-process, or in the collaboration for pools. */
+  function containerFor(doc, byId, elementId, planeElementId) {
+    const e = elementId ? byId.get(elementId) : null;
+    if (e && e.namespaceURI === NS.bpmn) {
+      if (e.localName === 'participant') return e.parentNode;
+      for (let n = e.parentNode; n && n.nodeType === 1; n = n.parentNode) if (isBpmnEl(n, CONTAINERS)) return n;
+    }
+    const pe = byId.get(planeElementId);
+    if (isBpmnEl(pe, CONTAINERS)) return pe;
+    if (isBpmnEl(pe, ['participant'])) return pe.parentNode;
+    return Array.from(doc.documentElement.children).find((c) => isBpmnEl(c, ['collaboration', 'process'])) || null;
+  }
+
+  let measurer = null;
+  /* Size of the annotation as BPMN tools draw it: 12px Arial with a little padding. */
+  function measureAnnotation(text, widthEm) {
+    if (!measurer) {
+      measurer = document.createElement('div');
+      measurer.className = 'annot-measure';
+      measurer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(measurer);
+    }
+    measurer.style.width = widthEm ? widthEm * TAG_FONT + 'px' : '';
+    measurer.style.maxWidth = widthEm ? 'none' : '';
+    measurer.textContent = text;
+    return { w: Math.max(40, Math.ceil(measurer.offsetWidth) + 6), h: Math.max(26, Math.ceil(measurer.offsetHeight)) };
+  }
+
+  function clipToRect(from, to, r) {
+    const dx = to.x - from.x, dy = to.y - from.y;
+    let k = 1;
+    if (dx) k = Math.min(k, Math.max(0, ((dx > 0 ? r.x + r.w : r.x) - from.x) / dx));
+    if (dy) k = Math.min(k, Math.max(0, ((dy > 0 ? r.y + r.h : r.y) - from.y) / dy));
+    return { x: from.x + dx * k, y: from.y + dy * k };
+  }
+  const rectsOverlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  function midpointOf(pts) {
+    const lens = [];
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); lens.push(l); total += l; }
+    let half = total / 2;
+    for (let i = 1; i < pts.length; i++) {
+      if (half <= lens[i - 1] || i === pts.length - 1) {
+        const f = lens[i - 1] ? Math.min(1, half / lens[i - 1]) : 0;
+        return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f };
+      }
+      half -= lens[i - 1];
+    }
+    return pts[0];
+  }
+
+  /* The text written into the annotation: {Column}, or the values of the selected rows. */
+  function exportText(t, mode) {
+    const ci = data.colIndex.get(t.col);
+    if (mode !== 'values' || ci === undefined || !sel.rows.length) return '{' + t.col + '}';
+    const items = sel.rows.map((r) => ({
+      label: (data.rows[r].cells[data.listCol] || '').replace(/\s+/g, ' ').trim(),
+      value: (data.rows[r].cells[ci] || '').replace(/\r\n?/g, '\n').trim() || '–'
+    }));
+    let body;
+    if (items.length === 1) body = items[0].value;
+    else if (items.some((x) => x.value.includes('\n'))) body = items.map((x) => x.label + ':\n' + x.value).join('\n\n');
+    else body = items.map((x) => x.label + ': ' + x.value).join('\n');
+    return prefs.labels ? t.col + ':' + (body.includes('\n') ? '\n' : ' ') + body : body;
+  }
+
+  function buildExportXML(board, mode) {
+    const doc = new DOMParser().parseFromString(board.xml, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('the diagram XML could not be read');
+    const root = doc.documentElement;
+    const pfx = {};
+    const pre = (k) => (pfx[k] !== undefined ? pfx[k] : (pfx[k] = ensurePrefix(root, NS[k], k)));
+    const mk = (k, local, attrs, kids) => {
+      const p = pre(k);
+      const e = doc.createElementNS(NS[k], p ? p + ':' + local : local);
+      for (const a in attrs || {}) if (attrs[a] != null) e.setAttribute(a, String(attrs[a]));
+      for (const c of kids || []) e.appendChild(typeof c === 'string' ? doc.createTextNode(c) : c);
+      return e;
+    };
+    const byId = new Map();
+    for (const e of doc.getElementsByTagName('*')) { const id = e.getAttribute('id'); if (id) byId.set(id, e); }
+    const used = new Set(byId.keys());
+    const newId = (wanted, base) => {
+      if (wanted && !used.has(wanted) && /^[A-Za-z_][\w.-]*$/.test(wanted)) { used.add(wanted); return wanted; }
+      let id;
+      do { id = base + '_' + Math.random().toString(36).slice(2, 9); } while (used.has(id));
+      used.add(id);
+      return id;
+    };
+    const planes = Array.from(doc.getElementsByTagNameNS(NS.bpmndi, 'BPMNPlane'));
+    const wroteValues = mode === 'values' && sel.rows.length > 0;
+    let count = 0;
+    for (const t of board.tags) {
+      const planeKey = t.rootId && !byId.has(t.rootId) && /_plane$/.test(t.rootId) ? t.rootId.slice(0, -6) : t.rootId;
+      const plane = planes.find((pl) => pl.getAttribute('bpmnElement') === planeKey) || planes[0];
+      const container = plane ? containerFor(doc, byId, t.elementId, plane.getAttribute('bpmnElement')) : null;
+      if (!container) continue;
+      const text = exportText(t, mode);
+      const box = board.exportBox(t, text);
+      const annId = newId(t.annotationId, 'DataField');
+      t.annotationId = annId;
+      const field = mk('dpp', 'dataField', {
+        column: t.col, element: t.elementId, anchor: t.anchor === 'bottom' ? 'bottom' : 'top',
+        width: t.w ? Number(t.w.toFixed(2)) : null, height: t.h ? Number(t.h.toFixed(2)) : null,
+        text: wroteValues && data.colIndex.has(t.col) ? 'values' : 'column', sheet: data.sheet || null, workbook: data.fileName || null
+      });
+      const ann = mk('bpmn', 'textAnnotation', { id: annId }, [mk('bpmn', 'extensionElements', null, [field]), mk('bpmn', 'text', null, [text])]);
+      placeNode(doc, container, ann, artifactSlot(container));
+      const bounds = mk('dc', 'Bounds', { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.w), height: Math.round(box.h) });
+      placeNode(doc, plane, mk('bpmndi', 'BPMNShape', { id: newId(annId + '_di', 'DataField_di'), bpmnElement: annId }, [bounds]), null);
+      const line = board.associationLine(t, box);
+      if (line) {
+        const asId = newId(null, 'Association');
+        placeNode(doc, container, mk('bpmn', 'association', { id: asId, associationDirection: 'None', sourceRef: t.elementId, targetRef: annId }), artifactSlot(container));
+        placeNode(doc, plane, mk('bpmndi', 'BPMNEdge', { id: newId(asId + '_di', 'Association_di'), bpmnElement: asId }, line.map((pt) => mk('di', 'waypoint', { x: Math.round(pt.x), y: Math.round(pt.y) }))), null);
+      }
+      count++;
+    }
+    const body = new XMLSerializer().serializeToString(doc).replace(/^\s*<\?xml[^>]*\?>\s*/, '');
+    return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + body, count };
+  }
+
   /* ---------- Diagram boards ---------- */
   class Board {
     constructor(slot) {
@@ -1040,6 +1335,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         else if (act === 'zoom-out') this.zoomBy(0.8);
         else if (act === 'fit') this.fit();
         else if (act === 'clear') this.clearTags();
+        else if (act === 'download') toggleDownload(this, btn);
       });
       this.fileInput.addEventListener('change', () => {
         const f = this.fileInput.files[0];
@@ -1049,23 +1345,57 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     }
 
     async loadFile(file) {
-      let text;
-      try { text = await file.text(); }
-      catch (_) { toast(file.name + ' could not be read.', { error: true }); return; }
-      const ok = await this.load(text, { name: file.name });
-      if (ok) {
-        const n = this.tags.length;
-        toast('Opened ' + file.name + ' in diagram ' + this.key + (n ? '. Restored ' + plural(n, 'tag', 'tags') + ' from your last visit.' : ''));
+      if (!isZipFile(file)) return this.loadEntry({ name: file.name, file });
+      const entries = await bpmnEntriesFromZip(file);
+      if (!entries.length) return;
+      await this.loadEntry(entries[0]);
+      const other = boards.find((b) => b !== this);
+      if (entries[1] && other) await other.loadEntry(entries[1]);
+    }
+
+    async loadEntry(entry) {
+      let text = entry.text;
+      if (text == null) {
+        try { text = await entry.file.text(); }
+        catch (_) { toast(entry.name + ' could not be read.', { error: true }); return; }
       }
+      const ok = await this.load(text, { name: entry.name });
+      if (!ok) return;
+      const { fromFile, restored } = this.loadInfo;
+      toast('Opened ' + entry.name + ' in diagram ' + this.key
+        + (fromFile ? ' with ' + plural(fromFile, 'Excel field', 'Excel fields') + ' from the file.' : restored ? '. Restored ' + plural(restored, 'tag', 'tags') + ' from your last visit.' : ''));
+    }
+
+    /* Turn annotations read from the file into tags, now that the diagram's elements are known. */
+    fieldsToTags(fields) {
+      const main = this.rootId();
+      return fields.map((f) => {
+        let rootId = main;
+        if (f.plane && this.registry.get(f.plane + '_plane')) rootId = f.plane + '_plane';
+        else if (f.plane && this.registry.get(f.plane) && !this.registry.get(f.plane).parent) rootId = f.plane;
+        const elementId = f.element && this.registry.get(f.element) ? f.element : null;
+        const b = f.bounds;
+        let x = 0, y = 0, anchor = null;
+        if (b) {
+          x = b.x; y = b.y;
+          if (f.anchor === 'bottom') { anchor = 'bottom'; y = b.y + b.h; }
+          else if (f.anchor === 'top') anchor = 'top';
+        } else if (elementId) {
+          const eb = this.elementBox(elementId);
+          x = eb.x; y = eb.y; anchor = 'bottom';
+        }
+        return { col: f.column, x, y, anchor, elementId, rootId, w: f.w, h: f.h, annotationId: f.id };
+      });
     }
 
     async load(xml, opts) {
       if (!this.viewer) return false;
       const { name } = opts;
+      const found = extractDataFields(xml);
       this.importing = true;
       let result;
       try {
-        result = await this.viewer.importXML(xml);
+        result = await this.viewer.importXML(found.xml);
       } catch (err) {
         this.importing = false;
         const raw = String((err && err.message) || err);
@@ -1079,7 +1409,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         return false;
       }
       this.importing = false;
-      this.xml = xml; this.fileName = name;
+      this.xml = found.xml; this.rawHash = hashString(xml); this.fileName = name;
       this.nameEl.textContent = name;
       this.nameEl.title = name;
       const warnings = (result && result.warnings) || [];
@@ -1089,7 +1419,14 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       const drawn = this.registry.filter((e) => e.parent && e.type !== 'label').length;
       this.emptyEl.hidden = true;
       this.setMsg(drawn ? '' : 'This file has no diagram layout (BPMN DI), so there is nothing to draw. Save it from a modeler that stores the layout.');
-      const saved = store.get('tags:' + name, []);
+      // Tags edited on this exact file in this browser win; otherwise the fields stored in the file; otherwise older saved tags.
+      let saved = null, fromFile = 0, restored = 0;
+      const rec = store.get('tags:' + name, null);
+      const recTags = Array.isArray(rec) ? rec : rec && Array.isArray(rec.tags) ? rec.tags : null;
+      if (recTags && rec.hash && rec.hash === this.rawHash) { saved = recTags; restored = recTags.length; }
+      else if (found.fields.length) { saved = this.fieldsToTags(found.fields); fromFile = saved.length; }
+      else if (recTags) { saved = recTags; restored = recTags.length; }
+      this.loadInfo = { fromFile, restored };
       this.tags = (Array.isArray(saved) ? saved : []).map((t) => this.normalizeTag(t)).filter(Boolean);
       this.renderTags();
       this.tags.forEach((t) => { if (!t.anchor && t.node) this.placeAt(t, { x: t.x, y: t.y }); });
@@ -1218,7 +1555,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     normalizeTag(t) {
       if (!t || t.col == null) return null;
       const root = this.rootId();
-      const tag = { id: uid(), col: String(t.col), x: Number(t.x) || 0, y: Number(t.y) || 0, elementId: t.elementId || null, rootId: t.rootId && this.registry.get(t.rootId) ? t.rootId : root, anchor: t.anchor === 'bottom' || t.anchor === 'top' ? t.anchor : null, w: Number(t.w) > 0 ? Number(t.w) : null, h: Number(t.h) > 0 ? Number(t.h) : null, dx: 0, dy: 0 };
+      const tag = { id: uid(), col: String(t.col), x: Number(t.x) || 0, y: Number(t.y) || 0, elementId: t.elementId || null, rootId: t.rootId && this.registry.get(t.rootId) ? t.rootId : root, anchor: t.anchor === 'bottom' || t.anchor === 'top' ? t.anchor : null, w: Number(t.w) > 0 ? Number(t.w) : null, h: Number(t.h) > 0 ? Number(t.h) : null, annotationId: t.annotationId || null, dx: 0, dy: 0 };
       const ref = this.refPoint(tag.elementId);
       if (!ref) tag.elementId = null;
       else if (isFinite(t.dx) && isFinite(t.dy)) { tag.dx = Number(t.dx); tag.dy = Number(t.dy); tag.x = ref.x + tag.dx; tag.y = ref.y + tag.dy; }
@@ -1228,7 +1565,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 
     persist() {
       if (!this.fileName) return;
-      store.set('tags:' + this.fileName, this.tags.map((t) => ({ col: t.col, x: Math.round(t.x), y: Math.round(t.y), anchor: t.anchor, w: t.w || null, h: t.h || null, elementId: t.elementId, dx: Math.round(t.dx), dy: Math.round(t.dy), rootId: t.rootId })));
+      store.set('tags:' + this.fileName, { v: 2, hash: this.rawHash, tags: this.tags.map((t) => ({ col: t.col, x: Math.round(t.x), y: Math.round(t.y), anchor: t.anchor, w: t.w || null, h: t.h || null, elementId: t.elementId, dx: Math.round(t.dx), dy: Math.round(t.dy), rootId: t.rootId, annotationId: t.annotationId || null })) });
     }
 
     /* Viewport sync: tags live in diagram coordinates, the layer follows pan and zoom */
@@ -1358,6 +1695,41 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       }
     }
 
+    /* Annotation box in diagram units, at BPMN tools' 12px text size; the anchor point matches the tag here. */
+    exportBox(t, text) {
+      const m = measureAnnotation(text, t.w);
+      const w = t.w ? t.w * TAG_FONT : m.w;
+      const h = t.h ? t.h * TAG_FONT : m.h;
+      return { x: t.x, y: t.anchor === 'bottom' ? t.y - h : t.y, w, h };
+    }
+
+    /* Dotted association from the element to the annotation; none when the tag sits on or inside its element. */
+    associationLine(t, box) {
+      const el = t.elementId ? this.registry.get(t.elementId) : null;
+      if (!el) return null;
+      const c1 = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      if (el.waypoints && el.waypoints.length > 1) {
+        const mid = midpointOf(el.waypoints);
+        if (rectsOverlap(box, { x: mid.x - 1, y: mid.y - 1, w: 2, h: 2 })) return null;
+        return [mid, clipToRect(c1, mid, box)];
+      }
+      if (typeof el.x !== 'number') return null;
+      const r = { x: el.x, y: el.y, w: el.width, h: el.height };
+      if (rectsOverlap(box, r)) return null;
+      const c2 = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+      return [clipToRect(c2, c1, r), clipToRect(c1, c2, box)];
+    }
+
+    rebindTag(t, col) {
+      if (t.col === col) return;
+      const old = t.col;
+      t.col = col;
+      this.renderTags();
+      this.persist();
+      onTagsChanged();
+      toast('Changed the tag from ' + old + ' to ' + col, { action: 'Undo', onAction: () => { t.col = old; this.renderTags(); this.persist(); onTagsChanged(); } });
+    }
+
     clearTags() {
       if (!this.tags.length) { toast('Diagram ' + this.key + ' has no tags yet. Drag a column onto it.'); return; }
       this.removeTags(this.tags.map((t) => t.id));
@@ -1409,7 +1781,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         tip = 'There is no column "' + t.col + '" in the current sheet';
       } else if (!count) {
         html = '<div class="tag-body"><span class="tag-ph"><span class="br">{</span>' + esc(t.col) + '<span class="br">}</span></span></div>';
-        tip = t.col + ': select rows to see their values here';
+        tip = t.col + ': select rows to see their values here. Drop another column on this tag to change it.';
       } else {
         const lc = data.listCol;
         const tips = [t.col];
@@ -1595,7 +1967,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         pid: e.pointerId, x0: e.clientX, y0: e.clientY,
         offX: o.kind === 'tag' ? e.clientX - r.left : 12,
         offY: o.kind === 'tag' ? e.clientY - r.top : 10,
-        started: false, ghost: null, over: null, hitBoard: null, hitId: null
+        started: false, ghost: null, over: null, hitBoard: null, hitId: null, tagHit: null
       });
       try { o.source.setPointerCapture(e.pointerId); } catch (_) { /* not capturable */ }
       o.source.addEventListener('pointermove', this.onMove);
@@ -1649,7 +2021,17 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         s.over = b;
         if (s.kind === 'column') s.ghost.style.fontSize = (b ? b.tagFontPx : TAG_FONT * prefs.tagScale) + 'px';
       }
-      const id = b ? b.elementAt(cx, cy) : null;
+      let tagHit = null;
+      if (s.kind === 'column' && b) {
+        const n = document.elementsFromPoint(cx, cy).find((x) => x.classList && x.classList.contains('tag') && !x.classList.contains('is-ghost') && b.world.contains(x));
+        tagHit = n ? b.tagById(n.dataset.id) : null;
+      }
+      if (tagHit !== s.tagHit) {
+        if (s.tagHit && s.tagHit.node) s.tagHit.node.classList.remove('is-rebind');
+        if (tagHit && tagHit.node) tagHit.node.classList.add('is-rebind');
+        s.tagHit = tagHit;
+      }
+      const id = b && !tagHit ? b.elementAt(cx, cy) : null;
       if (id !== s.hitId || b !== s.hitBoard) {
         if (s.hitBoard) s.hitBoard.unmark(s.hitId, 'dpp-target');
         if (b && id) b.mark(id, 'dpp-target');
@@ -1665,7 +2047,9 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         const cx = e.clientX, cy = e.clientY;
         const b = boardAt(cx, cy);
         const elementId = b ? b.elementAt(cx, cy) : null;
+        const tagHit = s.kind === 'column' ? s.tagHit : null;
         Drag.end();
+        if (b && tagHit && b.tags.includes(tagHit)) { b.rebindTag(tagHit, s.col); return; }
         if (b) {
           const p = b.clientToDiagram(cx - s.offX, cy - s.offY);
           if (s.kind === 'column') b.addTag({ col: s.col, x: p.x, y: p.y, elementId });
@@ -1695,6 +2079,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       s.source.classList.remove('is-dragging');
       if (s.over) s.over.el.classList.remove('is-drop-target');
       if (s.hitBoard) s.hitBoard.unmark(s.hitId, 'dpp-target');
+      if (s.tagHit && s.tagHit.node) s.tagHit.node.classList.remove('is-rebind');
       document.body.classList.remove('is-dragging-tag');
     }
   };
@@ -1720,6 +2105,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (Drag.s) { Drag.end(); e.preventDefault(); }
+    else if (!dl.pop.hidden) { closeDownload(true); e.preventDefault(); }
     else if (armed != null) { disarm(); e.preventDefault(); }
   });
 
@@ -1735,13 +2121,17 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     ui.sidebar.classList.remove('is-file-target');
   }
   function freeBoard() { return boards.find((b) => !b.xml) || boards[0]; }
-  function routeFiles(files, zone) {
-    const sheets = files.filter(isSheetFile).filter((f) => !isBpmnFile(f));
-    const diagrams = files.filter(isBpmnFile);
+  async function routeFiles(files, zone) {
+    const sheets = files.filter((f) => isSheetFile(f) && !isBpmnFile(f));
+    const diagrams = [];
+    for (const f of files) {
+      if (isZipFile(f)) diagrams.push(...(await bpmnEntriesFromZip(f)));
+      else if (isBpmnFile(f)) diagrams.push({ name: f.name, file: f });
+    }
     if (sheets.length) openExcelFile(sheets[0]);
-    if (diagrams.length === 1) (zone instanceof Board ? zone : freeBoard()).loadFile(diagrams[0]);
-    else if (diagrams.length > 1) { boards[0].loadFile(diagrams[0]); boards[1].loadFile(diagrams[1]); }
-    if (!sheets.length && !diagrams.length) toast('Drop an Excel or CSV file, or a .bpmn file.', { error: true });
+    if (diagrams.length === 1) (zone instanceof Board ? zone : freeBoard()).loadEntry(diagrams[0]);
+    else if (diagrams.length > 1) { boards[0].loadEntry(diagrams[0]); boards[1].loadEntry(diagrams[1]); }
+    if (!sheets.length && !diagrams.length && !files.some(isZipFile)) toast('Drop an Excel or CSV file, or a .bpmn file.', { error: true });
   }
   let fileDepth = 0;
   window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { e.preventDefault(); fileDepth++; } });
@@ -1823,12 +2213,138 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   ui.size.value = String(prefs.tagScale);
   ui.size.addEventListener('change', () => { prefs.tagScale = Number(ui.size.value) || 1; savePrefs(); boards.forEach((b) => b.applyTagScale()); });
 
+  /* ---------- Download ----------
+     Standalone, the page saves a .bpmn file. Inside the Claude viewer files are saved through the downloads
+     capability, which accepts .zip but not .bpmn, so the .bpmn file is delivered inside a .zip there. */
+  const dl = {
+    pop: $('#dl-pop'), title: $('#dl-title'), note: $('#dl-note'), where: $('#dl-where'), modes: $('#dl-modes'),
+    col: $('#dl-mode-col'), val: $('#dl-mode-val'), valLabel: $('#dl-val-label'), valText: $('#dl-val-text'),
+    go: $('#dl-go'), copy: $('#dl-copy'), board: null, btn: null
+  };
+  let downloadsNS;
+  let downloadsAsk = null;
+  const inViewer = () => !!(window.claude && typeof window.claude.use === 'function');
+  function getDownloads() {
+    if (downloadsNS !== undefined) return Promise.resolve(downloadsNS);
+    if (!inViewer()) return Promise.resolve(null);
+    if (!downloadsAsk) downloadsAsk = Promise.resolve().then(() => window.claude.use('downloads')).catch(() => null).then((ns) => (downloadsNS = ns || null));
+    return downloadsAsk;
+  }
+  const bpmnName = (name) => (name || 'diagram').replace(/\.(bpmn2?|xml)$/i, '') + '.bpmn';
+
+  function describeTarget() {
+    const name = bpmnName(dl.board.fileName);
+    if (!inViewer()) { dl.go.textContent = 'Download .bpmn'; dl.go.disabled = false; dl.where.textContent = 'Saves ' + name + '.'; return; }
+    if (downloadsNS === null) { dl.go.textContent = 'Download'; dl.go.disabled = true; dl.where.textContent = 'This view can’t save files. Copy the XML and save it as ' + name + '.'; return; }
+    dl.go.textContent = 'Download .zip';
+    dl.go.disabled = false;
+    dl.where.textContent = 'Saves ' + name.replace(/\.bpmn$/, '') + '.zip with ' + name + ' inside. This viewer saves .zip files, and this page opens the .zip directly too.';
+  }
+
+  function toggleDownload(board, btn) {
+    if (!dl.pop.hidden && dl.board === board) { closeDownload(true); return; }
+    if (!board.xml) { toast('Open a diagram in ' + board.key + ' first.', { error: true }); return; }
+    dl.board = board; dl.btn = btn;
+    const n = board.tags.length, rows = sel.rows.length;
+    dl.title.textContent = 'Download diagram ' + board.key;
+    dl.note.textContent = n
+      ? plural(n, 'Excel field is', 'Excel fields are') + ' saved as BPMN text annotations, linked to their elements. Other BPMN tools show them as normal annotations; this page opens them as fields again.'
+      : 'No Excel fields are placed on this diagram yet, so it downloads as it is.';
+    dl.modes.disabled = !n;
+    dl.val.disabled = !n || !rows;
+    dl.valLabel.classList.toggle('is-disabled', dl.val.disabled);
+    dl.valText.textContent = !rows ? 'Values of the selected rows (select rows first)'
+      : rows === 1 ? 'Values of the selected row, ' + oneLine(data.rows[sel.rows[0]].cells[data.listCol] || 'row', 32)
+      : 'Values of the ' + rows + ' selected rows';
+    if (dl.val.disabled) dl.col.checked = true;
+    describeTarget();
+    if (inViewer()) { getDownloads().then(() => { if (!dl.pop.hidden) describeTarget(); }); ensureFflate().catch(() => {}); }
+    dl.pop.hidden = false;
+    const r = btn.getBoundingClientRect(), pw = dl.pop.offsetWidth, ph = dl.pop.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 6);
+    dl.pop.style.left = clamp(r.right - pw, 12, window.innerWidth - pw - 12) + 'px';
+    dl.pop.style.top = top + 'px';
+    (dl.modes.disabled ? dl.go : dl.col.checked ? dl.col : dl.val).focus();
+  }
+
+  function closeDownload(refocus) {
+    if (dl.pop.hidden) return;
+    dl.pop.hidden = true;
+    if (refocus && dl.btn) dl.btn.focus();
+  }
+
+  function exportFor(board) {
+    try {
+      const out = buildExportXML(board, dl.val.checked ? 'values' : 'column');
+      board.persist();
+      return out;
+    } catch (err) {
+      toast('The diagram could not be prepared: ' + String((err && err.message) || err), { error: true });
+      return null;
+    }
+  }
+
+  dl.go.addEventListener('click', async () => {
+    const board = dl.board;
+    const out = board && exportFor(board);
+    if (!out) return;
+    const name = bpmnName(board.fileName);
+    const what = out.count ? ' with ' + plural(out.count, 'Excel field', 'Excel fields') : '';
+    closeDownload(true);
+    if (!inViewer()) {
+      const url = URL.createObjectURL(new Blob([out.xml], { type: 'application/xml' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast('Downloaded ' + name + what);
+      return;
+    }
+    const ns = await getDownloads();
+    if (!ns) { toast('This view can’t save files. Use Copy XML instead.', { error: true }); return; }
+    let zip;
+    try { await ensureFflate(); zip = window.fflate.zipSync({ [name]: window.fflate.strToU8(out.xml) }, { level: 6 }); }
+    catch (_) { toast('The zip tool could not be loaded. Use Copy XML instead.', { error: true }); return; }
+    const zipName = name.replace(/\.bpmn$/, '') + '.zip';
+    try {
+      await ns.save({ filename: zipName, data: zip });
+      toast('Saved ' + zipName + ' (' + name + what + ')');
+    } catch (err) {
+      const code = err && err.code;
+      if (code === 'declined') toast('Download cancelled');
+      else if (code === 'rate_limited') toast('Another download is still waiting for your confirmation.', { error: true });
+      else toast('The file could not be saved here. Use Copy XML instead.', { error: true });
+    }
+  });
+
+  dl.copy.addEventListener('click', async () => {
+    const board = dl.board;
+    const out = board && exportFor(board);
+    if (!out) return;
+    try {
+      await navigator.clipboard.writeText(out.xml);
+      closeDownload(true);
+      toast('Copied the BPMN XML. Paste it into a text file and save it as ' + bpmnName(board.fileName) + '.');
+    } catch (_) {
+      toast('Copying is not allowed here.', { error: true });
+    }
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (dl.pop.hidden || dl.pop.contains(e.target) || (dl.btn && dl.btn.contains(e.target))) return;
+    closeDownload(false);
+  }, true);
+  if (inViewer()) getDownloads();
+
   /* ---------- Start ---------- */
   boards.push(new Board('a'), new Board('b'));
   applyLayout();
   renderDataUI();
 
-  window.dataProcessPreview = { data, sel, boards, setSelection };
+  window.dataProcessPreview = { data, sel, boards, setSelection, exportXML: (i, mode) => buildExportXML(boards[i], mode || 'column') };
 })();
 </script>
 </body>
