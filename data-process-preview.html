@@ -288,6 +288,10 @@ button, input, select { font: inherit; color: inherit; }
 .tag-more { color: #5d6678; font-size: .82em; }
 .tag-x { position: absolute; top: -.7em; right: -.7em; display: none; place-items: center; width: 1.6em; height: 1.6em; padding: 0; border: 1px solid #c8ced8; border-radius: 50%; background: #ffffff; color: #333b4a; font: 600 1em/1 var(--font-body); cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
 .tag-rs { position: absolute; right: 0; bottom: 0; display: none; width: 1.2em; height: 1.2em; border-bottom-right-radius: .35em; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, color-mix(in srgb, var(--c) 80%, #ffffff) 50% 58%, transparent 58% 68%, color-mix(in srgb, var(--c) 80%, #ffffff) 68% 76%, transparent 76%); }
+.tag-link { position: absolute; left: -.62em; top: 50%; display: none; width: 1.1em; height: 1.1em; margin-top: -.55em; padding: 0; border: .14em solid var(--c); border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgba(0, 0, 0, .18); cursor: crosshair; touch-action: none; }
+.tag-link::after { content: ""; position: absolute; inset: .2em; border-radius: 50%; background: var(--c); opacity: 0; }
+.tag.is-linked .tag-link::after { opacity: 1; }
+.tag:hover .tag-link, .tag:focus-within .tag-link, .tag.is-linking .tag-link { display: block; }
 .tag:hover .tag-x, .tag:focus-within .tag-x { display: grid; }
 .tag:hover .tag-rs, .tag:focus-within .tag-rs, .tag.is-resizing .tag-rs { display: block; }
 .tag.is-resizing { cursor: nwse-resize; }
@@ -297,11 +301,19 @@ button, input, select { font: inherit; color: inherit; }
 body.is-dragging-tag, body.is-dragging-tag * { cursor: grabbing !important; }
 body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !important; }
 
+/* Elements take the colour of the field connected to them; connector lines run from field to element */
+.djs-shape.dpp-colored > .djs-visual > :first-child { stroke: var(--dpp-c) !important; }
+.djs-shape.dpp-colored:not(.dpp-container) > .djs-visual > :first-child { fill: var(--dpp-f) !important; }
+.djs-connection.dpp-colored > .djs-visual > path { stroke: var(--dpp-c) !important; }
+.djs-shape.dpp-colored > .djs-visual > text, .djs-element.dpp-colored-label > .djs-visual > text { fill: var(--dpp-c) !important; }
+.dpp-link { fill: none; stroke-width: 2px; stroke-dasharray: 2 4; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+.dpp-link.is-preview { stroke-dasharray: 6 4; }
+
 /* Highlights drawn on the BPMN elements themselves */
-.djs-shape.dpp-target .djs-visual > :first-child { stroke: var(--paper-accent) !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--paper-accent) 9%, #ffffff) !important; }
-.djs-connection.dpp-target .djs-visual > path { stroke: var(--paper-accent) !important; stroke-width: 3px !important; }
-.djs-shape.dpp-linked .djs-visual > :first-child { stroke: var(--paper-accent) !important; stroke-width: 2.5px !important; }
-.djs-connection.dpp-linked .djs-visual > path { stroke: var(--paper-accent) !important; }
+.djs-container .djs-shape.dpp-target .djs-visual > :first-child { stroke: var(--paper-accent) !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--paper-accent) 9%, #ffffff) !important; }
+.djs-container .djs-connection.dpp-target .djs-visual > path { stroke: var(--paper-accent) !important; stroke-width: 3px !important; }
+.djs-container .djs-shape.dpp-linked .djs-visual > :first-child { stroke-width: 3px !important; }
+.djs-container .djs-connection.dpp-linked .djs-visual > path { stroke-width: 3px !important; }
 
 .armhint { position: absolute; top: 20px; left: 50%; z-index: 30; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); padding: 8px 10px 8px 14px; border-radius: 9px; background: var(--toast-bg); color: var(--toast-ink); font-size: 13px; box-shadow: 0 8px 28px rgba(0, 0, 0, .22); transform: translateX(-50%); }
 .armhint code { font-family: var(--font-mono); font-size: 12.5px; }
@@ -485,8 +497,18 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     bpmndi: 'http://www.omg.org/spec/BPMN/20100524/DI',
     dc: 'http://www.omg.org/spec/DD/20100524/DC',
     di: 'http://www.omg.org/spec/DD/20100524/DI',
-    dpp: 'urn:data-process-preview:1.0'
+    dpp: 'urn:data-process-preview:1.0',
+    bioc: 'http://bpmn.io/schema/bpmn/biocolor/1.0',
+    color: 'http://www.omg.org/spec/BPMN/non-normative/color/1.0'
   };
+  /* Colours are written in both dialects BPMN tools read: bpmn.io (bioc) and OMG "BPMN in Color" (color). */
+  const COLOR_ATTRS = [['bioc', 'stroke', 'stroke'], ['bioc', 'fill', 'fill'], ['color', 'border-color', 'border'], ['color', 'background-color', 'background']];
+  const MISSING_COLOR = '#8b93a1';
+  function tintHex(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    const ch = (v) => Math.round(255 - (255 - v) * k).toString(16).padStart(2, '0');
+    return '#' + ch((n >> 16) & 255) + ch((n >> 8) & 255) + ch(n & 255);
+  }
   const ROW_H = 34;            // px height of one row in the list
   const TAG_FONT = 12;         // px font size of a tag at 100% zoom
   const TAG_MIN_SCALE = 0.6;   // tags stop shrinking below this zoom level
@@ -1062,8 +1084,27 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     let doc;
     try { doc = new DOMParser().parseFromString(xml, 'application/xml'); } catch (_) { return { xml, fields: [] }; }
     if (doc.getElementsByTagName('parsererror').length) return { xml, fields: [] };
+    let changed = false;
+    // Element colours this page applied on download go back to what they were, unless another tool changed them since.
+    for (const local of ['BPMNShape', 'BPMNEdge']) {
+      for (const d of Array.from(doc.getElementsByTagNameNS(NS.bpmndi, local))) {
+        const applied = d.getAttributeNS(NS.dpp, 'color');
+        if (!applied) continue;
+        changed = true;
+        const current = d.getAttributeNS(NS.color, 'border-color') || d.getAttributeNS(NS.bioc, 'stroke') || '';
+        if (current.toLowerCase() === applied.toLowerCase()) {
+          const prev = {};
+          for (const kv of (d.getAttributeNS(NS.dpp, 'was') || '').split(';')) { const i = kv.indexOf('='); if (i > 0) prev[kv.slice(0, i)] = kv.slice(i + 1); }
+          for (const [k, attr, key] of COLOR_ATTRS) {
+            d.removeAttributeNS(NS[k], attr);
+            if (prev[key]) d.setAttributeNS(NS[k], ensurePrefix(doc.documentElement, NS[k], k) + ':' + attr, prev[key]);
+          }
+        }
+        d.removeAttributeNS(NS.dpp, 'color');
+        d.removeAttributeNS(NS.dpp, 'was');
+      }
+    }
     const anns = Array.from(doc.getElementsByTagNameNS(NS.bpmn, 'textAnnotation'));
-    if (!anns.length) return { xml, fields: [] };
     const di = new Map();
     for (const local of ['BPMNShape', 'BPMNEdge']) for (const e of doc.getElementsByTagNameNS(NS.bpmndi, local)) di.set(e.getAttribute('bpmnElement'), e);
     const assocs = Array.from(doc.getElementsByTagNameNS(NS.bpmn, 'association'));
@@ -1097,7 +1138,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       removeNode(shape);
       removeNode(a);
     }
-    if (!fields.length) return { xml, fields };
+    if (!fields.length && !changed) return { xml, fields };
     return { xml: new XMLSerializer().serializeToString(doc), fields };
   }
 
@@ -1245,6 +1286,12 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       used.add(id);
       return id;
     };
+    const setNS = (el, k, attr, v) => el.setAttributeNS(NS[k], pre(k) + ':' + attr, v);
+    const paint = (el, c, fill) => {
+      setNS(el, 'bioc', 'stroke', c);
+      setNS(el, 'color', 'border-color', c);
+      if (fill) { setNS(el, 'bioc', 'fill', fill); setNS(el, 'color', 'background-color', fill); }
+    };
     const planes = Array.from(doc.getElementsByTagNameNS(NS.bpmndi, 'BPMNPlane'));
     const wroteValues = mode === 'values' && sel.rows.length > 0;
     let count = 0;
@@ -1257,22 +1304,43 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       const box = board.exportBox(t, text);
       const annId = newId(t.annotationId, 'DataField');
       t.annotationId = annId;
+      const color = board.tagColor(t);
       const field = mk('dpp', 'dataField', {
-        column: t.col, element: t.elementId, anchor: t.anchor === 'bottom' ? 'bottom' : 'top',
+        column: t.col, element: t.elementId, anchor: t.anchor === 'bottom' ? 'bottom' : 'top', color,
         width: t.w ? Number(t.w.toFixed(2)) : null, height: t.h ? Number(t.h.toFixed(2)) : null,
         text: wroteValues && data.colIndex.has(t.col) ? 'values' : 'column', sheet: data.sheet || null, workbook: data.fileName || null
       });
       const ann = mk('bpmn', 'textAnnotation', { id: annId }, [mk('bpmn', 'extensionElements', null, [field]), mk('bpmn', 'text', null, [text])]);
       placeNode(doc, container, ann, artifactSlot(container));
       const bounds = mk('dc', 'Bounds', { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.w), height: Math.round(box.h) });
-      placeNode(doc, plane, mk('bpmndi', 'BPMNShape', { id: newId(annId + '_di', 'DataField_di'), bpmnElement: annId }, [bounds]), null);
+      const annShape = mk('bpmndi', 'BPMNShape', { id: newId(annId + '_di', 'DataField_di'), bpmnElement: annId }, [bounds]);
+      paint(annShape, color, null);
+      placeNode(doc, plane, annShape, null);
       const line = board.associationLine(t, box);
       if (line) {
         const asId = newId(null, 'Association');
         placeNode(doc, container, mk('bpmn', 'association', { id: asId, associationDirection: 'None', sourceRef: t.elementId, targetRef: annId }), artifactSlot(container));
-        placeNode(doc, plane, mk('bpmndi', 'BPMNEdge', { id: newId(asId + '_di', 'Association_di'), bpmnElement: asId }, line.map((pt) => mk('di', 'waypoint', { x: Math.round(pt.x), y: Math.round(pt.y) }))), null);
+        const edge = mk('bpmndi', 'BPMNEdge', { id: newId(asId + '_di', 'Association_di'), bpmnElement: asId }, line.map((pt) => mk('di', 'waypoint', { x: Math.round(pt.x), y: Math.round(pt.y) })));
+        paint(edge, color, null);
+        placeNode(doc, plane, edge, null);
       }
       count++;
+    }
+    // Each connected element takes the colour of its first field. dpp:color/dpp:was let this page undo it on open.
+    const first = new Map();
+    for (const t of board.tags) if (t.elementId && byId.has(t.elementId) && !first.has(t.elementId)) first.set(t.elementId, board.tagColor(t));
+    for (const local of ['BPMNShape', 'BPMNEdge']) {
+      for (const d of Array.from(doc.getElementsByTagNameNS(NS.bpmndi, local))) {
+        const id = d.getAttribute('bpmnElement');
+        const c = first.get(id);
+        const sem = byId.get(id);
+        if (!c || !sem || sem.localName === 'textAnnotation') continue;
+        const was = COLOR_ATTRS.map(([k, attr, key]) => { const v = d.getAttributeNS(NS[k], attr); return v ? key + '=' + v : ''; }).filter(Boolean).join(';');
+        const container = ['participant', 'lane', 'group'].includes(sem.localName) || d.getAttribute('isExpanded') === 'true';
+        paint(d, c, local === 'BPMNShape' && !container ? tintHex(c, 0.12) : null);
+        setNS(d, 'dpp', 'color', c);
+        setNS(d, 'dpp', 'was', was);
+      }
     }
     const body = new XMLSerializer().serializeToString(doc).replace(/^\s*<\?xml[^>]*\?>\s*/, '');
     return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + body, count };
@@ -1295,6 +1363,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       this.xml = ''; this.fileName = '';
       this.scale = NaN; this.lastVB = null; this.needsFit = false;
       this.hoverTag = null;
+      this.colored = new Map();
       this.bindTools();
       if (!window.BpmnJS) {
         this.viewer = null;
@@ -1409,6 +1478,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         return false;
       }
       this.importing = false;
+      this.colored = new Map();
       this.xml = found.xml; this.rawHash = hashString(xml); this.fileName = name;
       this.nameEl.textContent = name;
       this.nameEl.title = name;
@@ -1519,6 +1589,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         if (st.my) t.h = Math.max(1.9, Math.round((st.h + dy) / fpx * 100) / 100);
         this.applySize(t);
         this.updateScroll(t);
+        this.renderLinks();
       };
       const up = () => {
         handle.removeEventListener('pointermove', move);
@@ -1635,7 +1706,9 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       return { x: vb.x + (cx - r.left) / vb.scale, y: vb.y + (cy - r.top) / vb.scale };
     }
 
-    elementAt(cx, cy) {
+    /* The element under the pointer. Pools, lanes and groups only count when connecting explicitly, so a field
+       dropped on empty space inside a lane stays unconnected. */
+    elementAt(cx, cy, containers) {
       if (!this.viewer) return null;
       const nodes = document.elementsFromPoint(cx, cy);
       for (const node of nodes) {
@@ -1644,9 +1717,131 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         if (!g) continue;
         let el = this.registry.get(g.getAttribute('data-element-id'));
         if (el && el.type === 'label' && el.labelTarget) el = el.labelTarget;
-        if (el && el.parent) return el.id;
+        if (!el || !el.parent) continue;
+        if (!containers && /^bpmn:(Participant|Lane|Group)$/.test(el.type)) continue;
+        return el.id;
       }
       return null;
+    }
+
+    tagColor(t) { const ci = data.colIndex.get(t.col); return ci === undefined ? MISSING_COLOR : colColor(ci); }
+
+    elementLabel(id) {
+      const el = id ? this.registry.get(id) : null;
+      const name = el && el.businessObject && el.businessObject.name ? String(el.businessObject.name).replace(/\s+/g, ' ').trim() : '';
+      return name || (el ? el.type.replace('bpmn:', '') : 'the element');
+    }
+
+    tagBox(t) {
+      const f = this.footprint(t);
+      return { x: t.x, y: t.anchor === 'bottom' ? t.y - f.h : t.y, w: f.w, h: f.h };
+    }
+
+    /* Dotted lines from fields to their elements, drawn in a canvas layer so they pan and zoom with the diagram. */
+    renderLinks() {
+      if (!this.viewer) return;
+      let html = '';
+      for (const t of this.tags) {
+        if (!t.node || !t.elementId) continue;
+        const line = this.associationLine(t, this.tagBox(t));
+        if (line) html += '<path class="dpp-link" d="M' + line[0].x.toFixed(1) + ' ' + line[0].y.toFixed(1) + 'L' + line[1].x.toFixed(1) + ' ' + line[1].y.toFixed(1) + '" style="stroke:' + this.tagColor(t) + '"></path>';
+      }
+      this.canvas.getLayer('dpp-links', 900).innerHTML = html;
+    }
+
+    /* Each connected element takes the colour of its first field (stroke, plus a light fill for tasks, events and gateways). */
+    applyElementColors() {
+      if (!this.viewer) return;
+      const want = new Map();
+      for (const t of this.tags) {
+        const el = t.elementId ? this.registry.get(t.elementId) : null;
+        if (el && el.type !== 'bpmn:TextAnnotation' && !want.has(el.id)) want.set(el.id, this.tagColor(t));
+      }
+      for (const id of Array.from(this.colored.keys())) if (!want.has(id)) this.paintElement(id, null);
+      for (const [id, c] of want) if (this.colored.get(id) !== c) this.paintElement(id, c);
+    }
+
+    paintElement(id, c) {
+      const el = this.registry.get(id);
+      const gfx = el && this.registry.getGraphics(el);
+      if (!gfx) { this.colored.delete(id); return; }
+      // External labels (events, gateways, flows) take the colour too, as BPMN tools draw them.
+      for (const label of el.labels || []) {
+        const lg = this.registry.getGraphics(label);
+        if (!lg) continue;
+        if (c) lg.style.setProperty('--dpp-c', c); else lg.style.removeProperty('--dpp-c');
+        lg.classList.toggle('dpp-colored-label', !!c);
+      }
+      if (c) {
+        gfx.style.setProperty('--dpp-c', c);
+        gfx.style.setProperty('--dpp-f', tintHex(c, 0.12));
+        gfx.classList.add('dpp-colored');
+        gfx.classList.toggle('dpp-container', /^bpmn:(Participant|Lane|Group)$/.test(el.type) || !!(el.di && el.di.isExpanded));
+        this.colored.set(id, c);
+      } else {
+        gfx.style.removeProperty('--dpp-c');
+        gfx.style.removeProperty('--dpp-f');
+        gfx.classList.remove('dpp-colored', 'dpp-container');
+        this.colored.delete(id);
+      }
+    }
+
+    /* Drag from the dot on a field's left edge to an element to connect it; release on empty space to disconnect. */
+    beginLink(e, t, n) {
+      e.preventDefault();
+      const handle = e.target.closest('.tag-link');
+      try { handle.setPointerCapture(e.pointerId); } catch (_) { /* not capturable */ }
+      this.setHover(null);
+      n.classList.add('is-linking');
+      const layer = this.canvas.getLayer('dpp-link-preview', 901);
+      layer.innerHTML = '<path class="dpp-link is-preview" style="stroke:' + this.tagColor(t) + '"></path>';
+      const path = layer.firstChild;
+      const box = this.tagBox(t);
+      const center = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      const x0 = e.clientX, y0 = e.clientY;
+      let hit = null, moved = false;
+      const move = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+        moved = true;
+        const q = this.clientToDiagram(ev.clientX, ev.clientY);
+        const from = clipToRect(center, q, box);
+        path.setAttribute('d', 'M' + from.x + ' ' + from.y + 'L' + q.x + ' ' + q.y);
+        const id = this.elementAt(ev.clientX, ev.clientY, true);
+        if (id !== hit) { this.unmark(hit, 'dpp-target'); this.mark(id, 'dpp-target'); hit = id; }
+      };
+      const finish = (commit) => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        handle.removeEventListener('pointercancel', cancel);
+        document.removeEventListener('keydown', esc, true);
+        this.unmark(hit, 'dpp-target');
+        layer.innerHTML = '';
+        n.classList.remove('is-linking');
+        if (!commit) return;
+        if (!moved) { toast('Drag from this dot to an element to connect the ' + t.col + ' field.'); return; }
+        this.connectTag(t, hit);
+      };
+      const up = () => finish(true);
+      const cancel = () => finish(false);
+      const esc = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); finish(false); } };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('pointercancel', cancel);
+      document.addEventListener('keydown', esc, true);
+    }
+
+    connectTag(t, id) {
+      const before = t.elementId || null;
+      if ((id || null) === before) return;
+      const apply = (target) => {
+        this.topAnchor(t);
+        t.elementId = target || null;
+        this.placeAt(t, { x: t.x, y: t.y });
+        this.renderTags();
+        this.persist();
+      };
+      apply(id);
+      toast(id ? 'Connected ' + t.col + ' to ' + this.elementLabel(id) : 'Disconnected ' + t.col + ' from ' + this.elementLabel(before), { action: 'Undo', onAction: () => apply(before) });
     }
 
     mark(id, cls) { if (id && this.registry.get(id)) this.canvas.addMarker(id, cls); }
@@ -1672,8 +1867,8 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       return t;
     }
 
-    moveTag(t, p, elementId) {
-      t.elementId = elementId && this.refPoint(elementId) ? elementId : null;
+    /* Moving a field never changes what it is connected to; the connector line follows it. */
+    moveTag(t, p) {
       this.placeAt(t, p);
       this.renderTags();
       this.persist();
@@ -1753,18 +1948,22 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       }
       this.placeTags();
       this.tags.forEach((t) => this.updateScroll(t));
+      this.applyElementColors();
     }
 
     placeTags() {
       const s = this.scale;
       if (!isFinite(s)) return;
       for (const t of this.tags) if (t.node) t.node.style.transform = 'translate(' + Math.round(t.x * s) + 'px,' + Math.round(t.y * s) + 'px)' + (t.anchor === 'bottom' ? ' translateY(-100%)' : '');
+      this.renderLinks();
     }
 
     refreshTags() {
       if (!this.viewer) return;
       for (const t of this.tags) if (t.node) this.fillTag(t);
       for (const t of this.tags) this.updateScroll(t);
+      this.renderLinks();
+      this.applyElementColors();
     }
 
     fillTag(t) {
@@ -1772,7 +1971,8 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       const ci = data.colIndex.get(t.col);
       const missing = ci === undefined;
       const count = sel.rows.length;
-      n.style.setProperty('--c', missing ? '#8b93a1' : colColor(ci));
+      n.style.setProperty('--c', missing ? MISSING_COLOR : colColor(ci));
+      n.classList.toggle('is-linked', !!t.elementId);
       n.classList.toggle('is-missing', missing);
       n.classList.toggle('is-placeholder', !missing && !count);
       let html, tip, blocks = false;
@@ -1801,7 +2001,9 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         tip = tips.join('\n');
       }
       n.classList.toggle('has-blocks', blocks);
-      html += '<button type="button" class="tag-x" tabindex="-1" aria-label="Remove the ' + esc(t.col) + ' tag" title="Remove">×</button>'
+      tip += t.elementId ? '\nConnected to ' + this.elementLabel(t.elementId) : '\nNot connected. Drag the dot on its left edge to an element to connect it.';
+      html += '<span class="tag-link" title="Drag to an element to connect this field. Release on empty space to disconnect." aria-hidden="true"></span>'
+        + '<button type="button" class="tag-x" tabindex="-1" aria-label="Remove the ' + esc(t.col) + ' tag" title="Remove">×</button>'
         + '<span class="tag-rs" title="Drag to resize. Double-click to fit the content again." aria-hidden="true"></span>';
       n.innerHTML = html;
       n.title = tip;
@@ -1823,6 +2025,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         const t = this.tagById(n.dataset.id);
         if (!t) return;
         e.stopPropagation();
+        if (e.target.closest('.tag-link')) { this.beginLink(e, t, n); return; }
         if (e.target.closest('.tag-rs')) { this.beginResize(e, t, n); return; }
         const body = e.target.closest('.tag-body');
         if (body && e.target === body && e.offsetX >= body.clientWidth) return; // pressed on the tag's scrollbar
@@ -2031,7 +2234,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         if (tagHit && tagHit.node) tagHit.node.classList.add('is-rebind');
         s.tagHit = tagHit;
       }
-      const id = b && !tagHit ? b.elementAt(cx, cy) : null;
+      const id = b && !tagHit && (s.kind === 'column' || b !== s.board) ? b.elementAt(cx, cy) : null;
       if (id !== s.hitId || b !== s.hitBoard) {
         if (s.hitBoard) s.hitBoard.unmark(s.hitId, 'dpp-target');
         if (b && id) b.mark(id, 'dpp-target');
@@ -2046,14 +2249,14 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         setTimeout(() => { Drag.justDragged = false; }, 0);
         const cx = e.clientX, cy = e.clientY;
         const b = boardAt(cx, cy);
-        const elementId = b ? b.elementAt(cx, cy) : null;
+        const elementId = b && (s.kind === 'column' || b !== s.board) ? b.elementAt(cx, cy) : null;
         const tagHit = s.kind === 'column' ? s.tagHit : null;
         Drag.end();
         if (b && tagHit && b.tags.includes(tagHit)) { b.rebindTag(tagHit, s.col); return; }
         if (b) {
           const p = b.clientToDiagram(cx - s.offX, cy - s.offY);
           if (s.kind === 'column') b.addTag({ col: s.col, x: p.x, y: p.y, elementId });
-          else if (b === s.board) s.board.moveTag(s.tag, p, elementId);
+          else if (b === s.board) s.board.moveTag(s.tag, p);
           else {
             s.board.removeTags([s.tag.id], { silent: true });
             b.addTag({ col: s.tag.col, x: p.x, y: p.y, elementId, w: s.tag.w, h: s.tag.h });
