@@ -69,7 +69,7 @@
   color-scheme: dark;
 }
 
-/* bpmn-js 18.31.1 viewer styles: the rules from dist/assets/diagram-js.css and bpmn-js.css that a navigated viewer uses */
+/* bpmn-js 18.33.0 viewer styles: the rules from dist/assets/diagram-js.css and bpmn-js.css that a navigated viewer uses */
 .bio-theme-parent {
   --bio-surface: hsl(0, 0%, 100%);
   --bio-surface-subtle: hsl(225, 10%, 97%);
@@ -370,7 +370,6 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         <button type="button" id="lay-stack" aria-pressed="true" title="Stack the diagrams" aria-label="Stack the diagrams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/></svg></button>
         <button type="button" id="lay-side" aria-pressed="false" title="Put the diagrams side by side" aria-label="Put the diagrams side by side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="7" height="16" rx="1.5"/><rect x="13" y="4" width="7" height="16" rx="1.5"/></svg></button>
       </div>
-      <button type="button" class="btn btn-small" id="load-example">Load example</button>
     </div>
   </header>
 
@@ -378,7 +377,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     <section class="sec src-sec">
       <h2 class="eyebrow sheet-eyebrow">Spreadsheet</h2>
       <div class="file-line">
-        <span class="file-name" id="excel-name">Example orders</span><span class="pill" id="excel-pill">Example</span>
+        <span class="file-name" id="excel-name">No spreadsheet</span>
         <button type="button" class="btn btn-small" id="open-excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg>Open Excel…</button>
         <input type="file" id="file-excel" accept=".xlsx,.xlsm,.xlsb,.xls,.ods,.csv,.tsv" hidden>
       </div>
@@ -411,7 +410,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     <section class="board" id="board-a" aria-label="Diagram A">
       <header class="board-head">
         <span class="board-key" aria-hidden="true">A</span>
-        <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-example" hidden>Example</span><span class="pill pill-warn" hidden></span></div>
+        <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-warn" hidden></span></div>
         <div class="board-tools">
           <button type="button" class="btn btn-small" data-act="open" title="Open a .bpmn file in diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg><span class="btn-label">Open .bpmn…</span></button>
           <button type="button" class="icon-btn" data-act="download" aria-haspopup="dialog" title="Download diagram A with its Excel fields as BPMN annotations" aria-label="Download diagram A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg></button>
@@ -436,7 +435,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     <section class="board" id="board-b" aria-label="Diagram B">
       <header class="board-head">
         <span class="board-key" aria-hidden="true">B</span>
-        <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-example" hidden>Example</span><span class="pill pill-warn" hidden></span></div>
+        <div class="board-title"><span class="board-name">No diagram</span><span class="pill pill-warn" hidden></span></div>
         <div class="board-tools">
           <button type="button" class="btn btn-small" data-act="open" title="Open a .bpmn file in diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg><span class="btn-label">Open .bpmn…</span></button>
           <button type="button" class="icon-btn" data-act="download" aria-haspopup="dialog" title="Download diagram B with its Excel fields as BPMN annotations" aria-label="Download diagram B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg></button>
@@ -472,318 +471,14 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="application/xml" id="example-a">
-<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Defs_OrderFulfilment" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:collaboration id="Collab_Order">
-    <bpmn:participant id="Pool_Order" name="Order fulfilment" processRef="Process_Order" />
-  </bpmn:collaboration>
-  <bpmn:process id="Process_Order" isExecutable="false">
-    <bpmn:laneSet id="LaneSet_Order">
-      <bpmn:lane id="Lane_Sales" name="Sales">
-        <bpmn:flowNodeRef>Start_Order</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_Check</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Gw_Amount</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_Approve</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Gw_Join</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="Lane_Warehouse" name="Warehouse">
-        <bpmn:flowNodeRef>Task_Pick</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_Ship</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>End_Shipped</bpmn:flowNodeRef>
-      </bpmn:lane>
-    </bpmn:laneSet>
-    <bpmn:startEvent id="Start_Order" name="Order received">
-      <bpmn:outgoing>Flow_1</bpmn:outgoing>
-      <bpmn:messageEventDefinition id="Med_Order" />
-    </bpmn:startEvent>
-    <bpmn:userTask id="Task_Check" name="Check order">
-      <bpmn:incoming>Flow_1</bpmn:incoming>
-      <bpmn:outgoing>Flow_2</bpmn:outgoing>
-    </bpmn:userTask>
-    <bpmn:exclusiveGateway id="Gw_Amount" name="Amount over €5,000?">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
-      <bpmn:outgoing>Flow_Yes</bpmn:outgoing>
-      <bpmn:outgoing>Flow_No</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:userTask id="Task_Approve" name="Get manager approval">
-      <bpmn:incoming>Flow_Yes</bpmn:incoming>
-      <bpmn:outgoing>Flow_3</bpmn:outgoing>
-    </bpmn:userTask>
-    <bpmn:exclusiveGateway id="Gw_Join">
-      <bpmn:incoming>Flow_3</bpmn:incoming>
-      <bpmn:incoming>Flow_No</bpmn:incoming>
-      <bpmn:outgoing>Flow_4</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:manualTask id="Task_Pick" name="Pick and pack">
-      <bpmn:incoming>Flow_4</bpmn:incoming>
-      <bpmn:outgoing>Flow_5</bpmn:outgoing>
-      <bpmn:property id="Prop_Pick" name="__targetRef_placeholder" />
-      <bpmn:dataInputAssociation id="Assoc_Stock">
-        <bpmn:sourceRef>Store_Stock</bpmn:sourceRef>
-        <bpmn:targetRef>Prop_Pick</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
-    </bpmn:manualTask>
-    <bpmn:sendTask id="Task_Ship" name="Ship order">
-      <bpmn:incoming>Flow_5</bpmn:incoming>
-      <bpmn:outgoing>Flow_6</bpmn:outgoing>
-    </bpmn:sendTask>
-    <bpmn:endEvent id="End_Shipped" name="Order shipped">
-      <bpmn:incoming>Flow_6</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:dataStoreReference id="Store_Stock" name="Stock levels" />
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Order" targetRef="Task_Check" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Check" targetRef="Gw_Amount" />
-    <bpmn:sequenceFlow id="Flow_Yes" name="Yes" sourceRef="Gw_Amount" targetRef="Task_Approve" />
-    <bpmn:sequenceFlow id="Flow_No" name="No" sourceRef="Gw_Amount" targetRef="Gw_Join" />
-    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Approve" targetRef="Gw_Join" />
-    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gw_Join" targetRef="Task_Pick" />
-    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Pick" targetRef="Task_Ship" />
-    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Ship" targetRef="End_Shipped" />
-  </bpmn:process>
-  <bpmndi:BPMNDiagram id="Diagram_Order">
-    <bpmndi:BPMNPlane id="Plane_Order" bpmnElement="Collab_Order">
-      <bpmndi:BPMNShape id="Pool_Order_di" bpmnElement="Pool_Order" isHorizontal="true">
-        <dc:Bounds x="160" y="60" width="1010" height="420" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Sales_di" bpmnElement="Lane_Sales" isHorizontal="true">
-        <dc:Bounds x="190" y="60" width="980" height="220" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_Warehouse_di" bpmnElement="Lane_Warehouse" isHorizontal="true">
-        <dc:Bounds x="190" y="280" width="980" height="200" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Start_Order_di" bpmnElement="Start_Order">
-        <dc:Bounds x="232" y="152" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="213" y="195" width="74" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Check_di" bpmnElement="Task_Check">
-        <dc:Bounds x="310" y="130" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gw_Amount_di" bpmnElement="Gw_Amount" isMarkerVisible="true">
-        <dc:Bounds x="465" y="145" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="447" y="108" width="86" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Approve_di" bpmnElement="Task_Approve">
-        <dc:Bounds x="570" y="130" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gw_Join_di" bpmnElement="Gw_Join" isMarkerVisible="true">
-        <dc:Bounds x="725" y="145" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Store_Stock_di" bpmnElement="Store_Stock">
-        <dc:Bounds x="695" y="345" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="689" y="402" width="62" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Pick_di" bpmnElement="Task_Pick">
-        <dc:Bounds x="820" y="330" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Ship_di" bpmnElement="Task_Ship">
-        <dc:Bounds x="970" y="330" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_Shipped_di" bpmnElement="End_Shipped">
-        <dc:Bounds x="1112" y="352" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1094" y="395" width="72" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
-        <di:waypoint x="268" y="170" />
-        <di:waypoint x="310" y="170" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
-        <di:waypoint x="410" y="170" />
-        <di:waypoint x="465" y="170" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_Yes_di" bpmnElement="Flow_Yes">
-        <di:waypoint x="515" y="170" />
-        <di:waypoint x="570" y="170" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="532" y="152" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_No_di" bpmnElement="Flow_No">
-        <di:waypoint x="490" y="195" />
-        <di:waypoint x="490" y="240" />
-        <di:waypoint x="750" y="240" />
-        <di:waypoint x="750" y="195" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="498" y="210" width="15" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
-        <di:waypoint x="670" y="170" />
-        <di:waypoint x="725" y="170" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
-        <di:waypoint x="775" y="170" />
-        <di:waypoint x="870" y="170" />
-        <di:waypoint x="870" y="330" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
-        <di:waypoint x="920" y="370" />
-        <di:waypoint x="970" y="370" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
-        <di:waypoint x="1070" y="370" />
-        <di:waypoint x="1112" y="370" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Assoc_Stock_di" bpmnElement="Assoc_Stock">
-        <di:waypoint x="745" y="370" />
-        <di:waypoint x="820" y="370" />
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-</bpmn:definitions>
-</script>
-<script type="application/xml" id="example-b">
-<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Defs_Invoicing" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_Invoicing" name="Invoicing and payment" isExecutable="false">
-    <bpmn:startEvent id="Start_Shipped" name="Order shipped">
-      <bpmn:outgoing>FlowB_1</bpmn:outgoing>
-      <bpmn:messageEventDefinition id="MedB_Shipped" />
-    </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_CreateInvoice" name="Create invoice">
-      <bpmn:incoming>FlowB_1</bpmn:incoming>
-      <bpmn:outgoing>FlowB_2</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:sendTask id="Task_SendInvoice" name="Send invoice to customer">
-      <bpmn:incoming>FlowB_2</bpmn:incoming>
-      <bpmn:outgoing>FlowB_3</bpmn:outgoing>
-    </bpmn:sendTask>
-    <bpmn:intermediateCatchEvent id="Timer_Term" name="Payment term elapsed">
-      <bpmn:incoming>FlowB_3</bpmn:incoming>
-      <bpmn:outgoing>FlowB_4</bpmn:outgoing>
-      <bpmn:timerEventDefinition id="TedB_Term" />
-    </bpmn:intermediateCatchEvent>
-    <bpmn:exclusiveGateway id="Gw_Paid" name="Payment received?">
-      <bpmn:incoming>FlowB_4</bpmn:incoming>
-      <bpmn:outgoing>FlowB_Yes</bpmn:outgoing>
-      <bpmn:outgoing>FlowB_No</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:userTask id="Task_Book" name="Book payment">
-      <bpmn:incoming>FlowB_Yes</bpmn:incoming>
-      <bpmn:outgoing>FlowB_5</bpmn:outgoing>
-    </bpmn:userTask>
-    <bpmn:endEvent id="End_Paid" name="Invoice paid">
-      <bpmn:incoming>FlowB_5</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:sendTask id="Task_Remind" name="Send payment reminder">
-      <bpmn:incoming>FlowB_No</bpmn:incoming>
-      <bpmn:outgoing>FlowB_6</bpmn:outgoing>
-    </bpmn:sendTask>
-    <bpmn:endEvent id="End_Reminded" name="Reminder sent">
-      <bpmn:incoming>FlowB_6</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:sequenceFlow id="FlowB_1" sourceRef="Start_Shipped" targetRef="Task_CreateInvoice" />
-    <bpmn:sequenceFlow id="FlowB_2" sourceRef="Task_CreateInvoice" targetRef="Task_SendInvoice" />
-    <bpmn:sequenceFlow id="FlowB_3" sourceRef="Task_SendInvoice" targetRef="Timer_Term" />
-    <bpmn:sequenceFlow id="FlowB_4" sourceRef="Timer_Term" targetRef="Gw_Paid" />
-    <bpmn:sequenceFlow id="FlowB_Yes" name="Yes" sourceRef="Gw_Paid" targetRef="Task_Book" />
-    <bpmn:sequenceFlow id="FlowB_No" name="No" sourceRef="Gw_Paid" targetRef="Task_Remind" />
-    <bpmn:sequenceFlow id="FlowB_5" sourceRef="Task_Book" targetRef="End_Paid" />
-    <bpmn:sequenceFlow id="FlowB_6" sourceRef="Task_Remind" targetRef="End_Reminded" />
-  </bpmn:process>
-  <bpmndi:BPMNDiagram id="Diagram_Invoicing">
-    <bpmndi:BPMNPlane id="Plane_Invoicing" bpmnElement="Process_Invoicing">
-      <bpmndi:BPMNShape id="Start_Shipped_di" bpmnElement="Start_Shipped">
-        <dc:Bounds x="152" y="122" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="134" y="165" width="72" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_CreateInvoice_di" bpmnElement="Task_CreateInvoice">
-        <dc:Bounds x="240" y="100" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_SendInvoice_di" bpmnElement="Task_SendInvoice">
-        <dc:Bounds x="390" y="100" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Timer_Term_di" bpmnElement="Timer_Term">
-        <dc:Bounds x="552" y="122" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="533" y="165" width="74" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gw_Paid_di" bpmnElement="Gw_Paid" isMarkerVisible="true">
-        <dc:Bounds x="650" y="115" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="630" y="78" width="90" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Book_di" bpmnElement="Task_Book">
-        <dc:Bounds x="750" y="100" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_Paid_di" bpmnElement="End_Paid">
-        <dc:Bounds x="902" y="122" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="890" y="165" width="60" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Remind_di" bpmnElement="Task_Remind">
-        <dc:Bounds x="750" y="230" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_Reminded_di" bpmnElement="End_Reminded">
-        <dc:Bounds x="902" y="252" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="884" y="295" width="72" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="FlowB_1_di" bpmnElement="FlowB_1">
-        <di:waypoint x="188" y="140" />
-        <di:waypoint x="240" y="140" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_2_di" bpmnElement="FlowB_2">
-        <di:waypoint x="340" y="140" />
-        <di:waypoint x="390" y="140" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_3_di" bpmnElement="FlowB_3">
-        <di:waypoint x="490" y="140" />
-        <di:waypoint x="552" y="140" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_4_di" bpmnElement="FlowB_4">
-        <di:waypoint x="588" y="140" />
-        <di:waypoint x="650" y="140" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_Yes_di" bpmnElement="FlowB_Yes">
-        <di:waypoint x="700" y="140" />
-        <di:waypoint x="750" y="140" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="716" y="122" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_No_di" bpmnElement="FlowB_No">
-        <di:waypoint x="675" y="165" />
-        <di:waypoint x="675" y="270" />
-        <di:waypoint x="750" y="270" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="683" y="203" width="15" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_5_di" bpmnElement="FlowB_5">
-        <di:waypoint x="850" y="140" />
-        <di:waypoint x="902" y="140" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="FlowB_6_di" bpmnElement="FlowB_6">
-        <di:waypoint x="850" y="270" />
-        <di:waypoint x="902" y="270" />
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-</bpmn:definitions>
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/bpmn-navigated-viewer.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.33.0/dist/bpmn-navigated-viewer.production.min.js"></script>
 <script>
 (() => {
   'use strict';
 
   /* ---------- Settings ---------- */
-  const XLSX_SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-  const FFLATE_SRC = 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js';
+  const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+  const FFLATE_SRC = 'https://cdn.jsdelivr.net/npm/fflate@0.8.3/umd/index.js';
   /* Placed fields are saved as standard BPMN text annotations; a dpp:dataField extension marks them as Excel fields. */
   const NS = {
     bpmn: 'http://www.omg.org/spec/BPMN/20100524/MODEL',
@@ -798,41 +493,6 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   const MAX_ROWS = 5;          // rows shown per tag before "+N more"
   const TEXT_SIZES = [0.85, 1, 1.25, 1.5];
   const COLORS = ['#2f5fc4', '#c4501f', '#1f7a4f', '#9a3a9a', '#8f6508', '#b8325e', '#4d55b8', '#5f7d17', '#8a4f2a', '#2b6f93', '#a03a3a', '#5a6a7a'];
-
-  /* Example data: an order-to-cash dataset that matches the two example diagrams. */
-  const EXAMPLE_ROWS = [
-    ['Order ID', 'Customer', 'Product', 'Qty', 'Amount', 'Order date', 'Sales rep', 'Approver', 'Warehouse', 'Carrier', 'Delivery notes', 'Tracking no.', 'Invoice no.', 'Payment terms', 'Due date', 'Paid on', 'Status'],
-    ['SO-24017', 'Brightwater Foods', 'Cold-room shelving', '12', '€7,840.00', '2026-10-02', 'Sanne de Vries', 'Mark Jansen', 'Tilburg DC', 'Rijnland Freight', 'Deliver to cold-store dock 3\n• Call 30 minutes before arrival\n• Forklift available on site\n• Pallets no higher than 1.8 m', 'RF-58210-7743', 'INV-26-0412', '30 days', '2026-11-08', '2026-11-05', 'Paid'],
-    ['SO-24018', 'Kestrel Logistics', 'Handheld scanners', '4', '€2,316.00', '2026-10-03', 'Ruben Bakker', '', 'Venlo DC', 'Parcelwise', 'Leave at reception if nobody answers', 'PW-4471-0932', 'INV-26-0413', '14 days', '2026-10-24', '', 'Reminder sent'],
-    ['SO-24019', 'Van Dijk Interiors', 'Oak meeting table', '1', '€3,450.00', '2026-10-06', 'Sanne de Vries', '', 'Utrecht hub', 'Kade Cargo', 'Two-person delivery\n1. Carry in through the side entrance\n2. Assemble in meeting room 2.04\n3. Take the packaging back', 'KC-00918-21', 'INV-26-0415', '30 days', '2026-11-12', '2026-11-10', 'Paid'],
-    ['SO-24020', 'Northfield Clinics', 'Examination lamps', '20', '€9,980.00', '2026-10-07', 'Joris Visser', 'Mark Jansen', 'Tilburg DC', 'Rijnland Freight', 'Deliver Mon–Fri between 07:00 and 09:00\n• Report to the facilities desk\n• Signed delivery note required', 'RF-58211-0068', 'INV-26-0418', '60 days', '2026-12-13', '', 'Awaiting payment'],
-    ['SO-24021', 'Aurora Print', 'Paper stock, 6 pallets', '6', '€1,284.60', '2026-10-09', 'Ruben Bakker', '', 'Venlo DC', 'Parcelwise', '', 'PW-4471-1187', 'INV-26-0420', '14 days', '2026-10-30', '2026-10-29', 'Paid'],
-    ['SO-24022', 'Helder Bikes', 'E-bike batteries', '40', '€14,600.00', '2026-10-13', 'Joris Visser', 'Eva Smit', 'Tilburg DC', 'Kade Cargo', 'Dangerous goods: UN3480 lithium-ion batteries\n• Packed in certified DG boxes\n• Driver needs an ADR certificate\n    ◦ Copy of the certificate in the cab\n    ◦ Fire extinguisher on board\n• No partial deliveries', 'KC-00918-77', 'INV-26-0423', '30 days', '2026-11-19', '', 'Awaiting payment'],
-    ['SO-24023', 'Veldhoven Ceramics', 'Kiln thermocouples', '15', '€1,147.50', '2026-10-14', 'Sanne de Vries', '', 'Utrecht hub', 'Parcelwise', 'Fragile: glass-sheathed sensors', 'PW-4472-0315', 'INV-26-0424', '30 days', '2026-11-20', '', 'Awaiting payment'],
-    ['SO-24024', 'Lindholm & Co', 'Standing desks', '18', '€8,262.00', '2026-10-20', 'Ruben Bakker', 'Eva Smit', '', '', '', '', '', '30 days', '', '', 'Awaiting approval'],
-    ['SO-24025', 'Polder Water Board', 'Pump controllers', '3', '€5,415.00', '2026-10-22', 'Joris Visser', 'Mark Jansen', 'Tilburg DC', 'Rijnland Freight', 'Site access via gate B\n– Hard hat and safety shoes required\n– Escort from the control room', 'RF-58213-4410', 'INV-26-0431', '30 days', '2026-11-28', '', 'Shipped'],
-    ['SO-24026', 'Kestrel Logistics', 'Label printers', '5', '€1,995.00', '2026-10-27', 'Ruben Bakker', '', 'Venlo DC', '', '', '', '', '14 days', '', '', 'Picking'],
-    ['SO-24027', 'Brightwater Foods', 'Thermal curtains', '8', '€2,712.00', '2026-11-02', 'Sanne de Vries', '', 'Utrecht hub', '', 'Combine with SO-24017 if both are ready', '', '', '30 days', '', '', 'Order checked'],
-    ['SO-24028', 'Northfield Clinics', 'Patient monitors', '6', '€21,300.00', '2026-11-04', 'Joris Visser', 'Eva Smit', '', '', 'Deliver to the medical engineering department\n• Contact: J. de Wit, ext. 4471\n• Install and test on site\n• Hand over manuals in Dutch and English', '', '', '60 days', '', '', 'Awaiting approval']
-  ];
-  const EXAMPLE_TAGS = {
-    a: [
-      { col: 'Customer', elementId: 'Start_Order', x: 204, y: 216 },
-      { col: 'Sales rep', elementId: 'Task_Check', x: 318, y: 101 },
-      { col: 'Amount', elementId: 'Gw_Amount', x: 452, y: 79 },
-      { col: 'Approver', elementId: 'Task_Approve', x: 578, y: 101 },
-      { col: 'Warehouse', elementId: 'Task_Pick', x: 828, y: 418 },
-      { col: 'Carrier', elementId: 'Task_Ship', x: 978, y: 418 },
-      { col: 'Delivery notes', elementId: 'Lane_Warehouse', x: 236, y: 296 }
-    ],
-    b: [
-      { col: 'Invoice no.', elementId: 'Task_CreateInvoice', x: 248, y: 71 },
-      { col: 'Amount', elementId: 'Task_SendInvoice', x: 398, y: 71 },
-      { col: 'Due date', elementId: 'Timer_Term', x: 532, y: 93 },
-      { col: 'Payment terms', elementId: 'Timer_Term', x: 532, y: 198 },
-      { col: 'Paid on', elementId: 'Task_Book', x: 758, y: 71 }
-    ]
-  };
 
   /* ---------- Helpers ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -1000,7 +660,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 
   /* ---------- State ---------- */
   const data = {
-    fileName: '', isExample: false, wb: null,
+    fileName: '', wb: null,
     sheetNames: [], sheet: '',
     aoa: [], row0: 0, col0: 0,   // the sheet as an array of rows; row0/col0 = zero-based sheet position of aoa[0][0]
     headerIdx: 0,
@@ -1023,11 +683,11 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 
   const ui = {
     stage: $('#stage'), splitter: $('#splitter'), sidebar: $('#sidebar'),
-    excelBtn: $('#open-excel'), excelInput: $('#file-excel'), excelName: $('#excel-name'), excelPill: $('#excel-pill'), excelMsg: $('#excel-msg'),
+    excelBtn: $('#open-excel'), excelInput: $('#file-excel'), excelName: $('#excel-name'), excelMsg: $('#excel-msg'),
     sheetSel: $('#sheet-select'), headerInput: $('#header-row'), listColSel: $('#list-col'),
     palette: $('#palette'), paletteMore: $('#palette-more'), rows: $('#rows'), sizer: $('#rows-sizer'), empty: $('#rows-empty'),
     filter: $('#row-filter'), count: $('#rows-count'), clear: $('#clear-sel'),
-    labels: $('#opt-labels'), size: $('#opt-size'), layStack: $('#lay-stack'), laySide: $('#lay-side'), example: $('#load-example'),
+    labels: $('#opt-labels'), size: $('#opt-size'), layStack: $('#lay-stack'), laySide: $('#lay-side'),
     toast: $('#toast'), armhint: $('#armhint')
   };
 
@@ -1045,14 +705,6 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   function hideToast() { clearTimeout(toastTimer); ui.toast.classList.remove('is-on'); }
 
   /* ---------- Spreadsheet ---------- */
-  function useExampleData() {
-    data.wb = null; data.fileName = 'Example orders'; data.isExample = true;
-    data.sheetNames = ['Orders']; data.sheet = 'Orders';
-    data.aoa = EXAMPLE_ROWS; data.row0 = 0; data.col0 = 0; data.rich = new Map();
-    showExcelMsg(null);
-    buildTable(0, null);
-  }
-
   function isSheetFile(f) { return /\.(xlsx|xlsm|xlsb|xls|ods|csv|tsv|txt)$/i.test(f.name); }
   function isBpmnFile(f) { return /\.(bpmn|bpmn2|xml)$/i.test(f.name); }
   function isZipFile(f) { return /\.zip$/i.test(f.name); }
@@ -1089,7 +741,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       showExcelMsg(file.name + ' could not be read. Save it as .xlsx or .csv and try again.');
       return;
     }
-    data.wb = wb; data.fileName = file.name; data.isExample = false;
+    data.wb = wb; data.fileName = file.name;
     data.sheetNames = wb.SheetNames.slice();
     const first = data.sheetNames.find((n) => wb.Sheets[n] && wb.Sheets[n]['!ref']) || data.sheetNames[0];
     selectSheet(first);
@@ -1190,14 +842,14 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   }
 
   function renderDataUI() {
-    ui.excelName.textContent = data.fileName;
+    ui.excelName.textContent = data.fileName || 'No spreadsheet';
     ui.excelName.title = data.fileName;
-    ui.excelPill.hidden = !data.isExample;
     ui.sheetSel.innerHTML = data.sheetNames.map((n) => '<option' + (n === data.sheet ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
     ui.sheetSel.disabled = data.sheetNames.length < 2;
     ui.headerInput.min = String(data.row0 + 1);
     ui.headerInput.max = String(Math.max(data.row0 + 1, data.row0 + data.aoa.length));
     ui.headerInput.value = String(data.row0 + data.headerIdx + 1);
+    ui.headerInput.disabled = !data.aoa.length;
     ui.listColSel.innerHTML = data.columns.map((c, i) => '<option value="' + i + '"' + (i === data.listCol ? ' selected' : '') + '>' + colLetter(data.col0 + i) + ' · ' + esc(c) + '</option>').join('');
     ui.listColSel.disabled = !data.columns.length;
     renderPalette();
@@ -1209,7 +861,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   function renderPalette() {
     const counts = new Map();
     boards.forEach((b) => b.tags.forEach((t) => counts.set(t.col, (counts.get(t.col) || 0) + 1)));
-    if (!data.columns.length) { ui.palette.innerHTML = '<p class="hint">No columns found in this sheet.</p>'; return; }
+    if (!data.columns.length) { ui.palette.innerHTML = '<p class="hint">' + (data.fileName ? 'No columns found in this sheet.' : 'Open a spreadsheet, or drop one here.') + '</p>'; return; }
     ui.palette.innerHTML = data.columns.map((c, i) => {
       const n = counts.get(c) || 0;
       return '<button type="button" class="col-chip' + (armed === c ? ' is-armed' : '') + '" data-col="' + esc(c) + '" style="--c:' + colColor(i) + '" title="' + esc(c) + ': drag onto a diagram, or click it and then click a spot on a diagram">'
@@ -1275,7 +927,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     ui.empty.hidden = total > 0;
     if (!total) {
       ui.sizer.innerHTML = '';
-      ui.empty.textContent = data.rows.length ? 'No rows match this filter.' : 'There are no rows below the header row.';
+      ui.empty.textContent = data.rows.length ? 'No rows match this filter.' : data.fileName ? 'There are no rows below the header row.' : 'No spreadsheet open.';
       ui.rows.removeAttribute('aria-activedescendant');
       return;
     }
@@ -1634,14 +1286,13 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       this.el = document.getElementById('board-' + slot);
       this.host = document.getElementById('host-' + slot);
       this.nameEl = this.el.querySelector('.board-name');
-      this.examplePill = this.el.querySelector('.pill-example');
       this.warnPill = this.el.querySelector('.pill-warn');
       this.zoomEl = this.el.querySelector('.zoom-val');
       this.msgEl = this.host.querySelector('.board-msg');
       this.emptyEl = this.host.querySelector('.board-empty');
       this.fileInput = document.getElementById('file-bpmn-' + slot);
       this.tags = [];
-      this.xml = ''; this.fileName = ''; this.isExample = false;
+      this.xml = ''; this.fileName = '';
       this.scale = NaN; this.lastVB = null; this.needsFit = false;
       this.hoverTag = null;
       this.bindTools();
@@ -1739,7 +1390,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
 
     async load(xml, opts) {
       if (!this.viewer) return false;
-      const { name, label, isExample = false, tags = null } = opts;
+      const { name } = opts;
       const found = extractDataFields(xml);
       this.importing = true;
       let result;
@@ -1758,10 +1409,9 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
         return false;
       }
       this.importing = false;
-      this.xml = found.xml; this.rawHash = hashString(xml); this.fileName = name; this.isExample = isExample;
-      this.nameEl.textContent = label || name;
+      this.xml = found.xml; this.rawHash = hashString(xml); this.fileName = name;
+      this.nameEl.textContent = name;
       this.nameEl.title = name;
-      this.examplePill.hidden = !isExample;
       const warnings = (result && result.warnings) || [];
       this.warnPill.hidden = !warnings.length;
       this.warnPill.textContent = plural(warnings.length, 'warning', 'warnings');
@@ -1770,14 +1420,12 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
       this.emptyEl.hidden = true;
       this.setMsg(drawn ? '' : 'This file has no diagram layout (BPMN DI), so there is nothing to draw. Save it from a modeler that stores the layout.');
       // Tags edited on this exact file in this browser win; otherwise the fields stored in the file; otherwise older saved tags.
-      let saved = tags, fromFile = 0, restored = 0;
-      if (!saved) {
-        const rec = isExample ? null : store.get('tags:' + name, null);
-        const recTags = Array.isArray(rec) ? rec : rec && Array.isArray(rec.tags) ? rec.tags : null;
-        if (recTags && rec.hash && rec.hash === this.rawHash) { saved = recTags; restored = recTags.length; }
-        else if (found.fields.length) { saved = this.fieldsToTags(found.fields); fromFile = saved.length; }
-        else if (recTags) { saved = recTags; restored = recTags.length; }
-      }
+      let saved = null, fromFile = 0, restored = 0;
+      const rec = store.get('tags:' + name, null);
+      const recTags = Array.isArray(rec) ? rec : rec && Array.isArray(rec.tags) ? rec.tags : null;
+      if (recTags && rec.hash && rec.hash === this.rawHash) { saved = recTags; restored = recTags.length; }
+      else if (found.fields.length) { saved = this.fieldsToTags(found.fields); fromFile = saved.length; }
+      else if (recTags) { saved = recTags; restored = recTags.length; }
       this.loadInfo = { fromFile, restored };
       this.tags = (Array.isArray(saved) ? saved : []).map((t) => this.normalizeTag(t)).filter(Boolean);
       this.renderTags();
@@ -1916,7 +1564,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     }
 
     persist() {
-      if (this.isExample || !this.fileName) return;
+      if (!this.fileName) return;
       store.set('tags:' + this.fileName, { v: 2, hash: this.rawHash, tags: this.tags.map((t) => ({ col: t.col, x: Math.round(t.x), y: Math.round(t.y), anchor: t.anchor, w: t.w || null, h: t.h || null, elementId: t.elementId, dx: Math.round(t.dx), dy: Math.round(t.dy), rootId: t.rootId, annotationId: t.annotationId || null })) });
     }
 
@@ -2472,7 +2120,7 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
     boards.forEach((b) => b.el.classList.remove('is-file-target'));
     ui.sidebar.classList.remove('is-file-target');
   }
-  function freeBoard() { return boards.find((b) => !b.xml || b.isExample) || boards[0]; }
+  function freeBoard() { return boards.find((b) => !b.xml) || boards[0]; }
   async function routeFiles(files, zone) {
     const sheets = files.filter((f) => isSheetFile(f) && !isBpmnFile(f));
     const diagrams = [];
@@ -2691,24 +2339,10 @@ body.is-armed .canvas-host, body.is-armed .canvas-host * { cursor: copy !importa
   }, true);
   if (inViewer()) getDownloads();
 
-  /* ---------- Example ---------- */
-  async function loadExample() {
-    useExampleData();
-    setSelection([0], 0);
-    sel.active = 0;
-    renderList();
-    const xmlA = $('#example-a').textContent.trim(), xmlB = $('#example-b').textContent.trim();
-    await Promise.all([
-      boards[0] && boards[0].load(xmlA, { name: 'order-fulfilment.bpmn', label: 'Order fulfilment', isExample: true, tags: EXAMPLE_TAGS.a }),
-      boards[1] && boards[1].load(xmlB, { name: 'invoicing.bpmn', label: 'Invoicing and payment', isExample: true, tags: EXAMPLE_TAGS.b })
-    ]);
-  }
-  ui.example.addEventListener('click', () => { loadExample().then(() => toast('Example data and diagrams loaded')); });
-
   /* ---------- Start ---------- */
   boards.push(new Board('a'), new Board('b'));
   applyLayout();
-  loadExample();
+  renderDataUI();
 
   window.dataProcessPreview = { data, sel, boards, setSelection, exportXML: (i, mode) => buildExportXML(boards[i], mode || 'column') };
 })();
